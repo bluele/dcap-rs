@@ -36,6 +36,23 @@ impl TcbStatus {
     }
 }
 
+impl ToString for TcbStatus {
+    fn to_string(&self) -> String {
+        return match self {
+            TcbStatus::OK => "UpToDate".to_string(),
+            TcbStatus::TcbSwHardeningNeeded => "SWHardeningNeeded".to_string(),
+            TcbStatus::TcbConfigurationAndSwHardeningNeeded => {
+                "ConfigurationAndSWHardeningNeeded".to_string()
+            }
+            TcbStatus::TcbConfigurationNeeded => "ConfigurationNeeded".to_string(),
+            TcbStatus::TcbOutOfDate => "OutOfDate".to_string(),
+            TcbStatus::TcbOutOfDateConfigurationNeeded => "OutOfDateConfigurationNeeded".to_string(),
+            TcbStatus::TcbRevoked => "Revoked".to_string(),
+            TcbStatus::TcbUnrecognized => "Unrecognized".to_string(),
+        };
+    }
+}
+
 // serialization:
 // [quote_vesion][tee_type][tcb_status][fmspc][quote_body_raw_bytes]
 // 2 bytes + 4 bytes + 1 byte + 6 bytes + var (SGX_ENCLAVE_REPORT = 384; TD10_REPORT = 584)
