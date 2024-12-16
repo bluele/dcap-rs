@@ -1,10 +1,11 @@
+use crate::constants::SGX_TEE_TYPE;
 use crate::types::quotes::{body::QuoteBody, version_3::QuoteV3};
 use crate::types::{
     collaterals::IntelCollateral,
-    tcbinfo::{TcbInfo, TcbInfoV2},
+    tcbinfo::{TcbInfo, TcbInfoV3},
     TcbStatus, VerifiedOutput,
 };
-use crate::utils::cert::get_sgx_fmspc_tcbstatus_v2;
+use crate::utils::cert::get_sgx_tdx_fmspc_tcbstatus_v3;
 
 use super::{check_quote_header, common_verify_and_fetch_tcb, converge_tcb_status_with_qe_tcb};
 
@@ -29,13 +30,18 @@ pub fn verify_quote_dcapv3(
         current_time,
     );
 
-    let tcb_info_v2: TcbInfoV2;
-    if let TcbInfo::V2(tcb) = tcb_info {
-        tcb_info_v2 = tcb;
+    let tcb_info_v3: TcbInfoV3;
+    if let TcbInfo::V3(tcb) = tcb_info {
+        tcb_info_v3 = tcb;
     } else {
-        panic!("TcbInfo must be V2!");
+        panic!("TcbInfo must be V3!");
     }
-    let mut tcb_status = get_sgx_fmspc_tcbstatus_v2(&sgx_extensions, &tcb_info_v2);
+    let (mut tcb_status, _, advisory_ids) = get_sgx_tdx_fmspc_tcbstatus_v3(
+        quote.header.tee_type,
+        &sgx_extensions,
+        &Default::default(),
+        &tcb_info_v3,
+    );
 
     assert!(tcb_status != TcbStatus::TcbRevoked, "FMSPC TCB Revoked");
 
@@ -46,7 +52,7 @@ pub fn verify_quote_dcapv3(
         tee_type: quote.header.tee_type,
         tcb_status,
         fmspc: sgx_extensions.fmspc,
-        quote_body: quote_body,
-        advisory_ids: None,
+        quote_body,
+        advisory_ids,
     }
 }

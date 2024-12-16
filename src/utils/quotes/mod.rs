@@ -23,7 +23,7 @@ use crate::utils::cert::{
 };
 use crate::utils::crypto::verify_p256_signature_bytes;
 use crate::utils::enclave_identity::validate_enclave_identityv2;
-use crate::utils::tcbinfo::{validate_tcbinfov2, validate_tcbinfov3};
+use crate::utils::tcbinfo::validate_tcbinfov3;
 
 fn check_quote_header(quote_header: &QuoteHeader, quote_version: u16) -> bool {
     let quote_version_is_valid = quote_header.version == quote_version;
@@ -161,23 +161,13 @@ fn common_verify_and_fetch_tcb(
         "Invalid attestation signature"
     );
 
-    // validate tcbinfo v2 or v3, depending on the quote version
-    let tcb_info: TcbInfo;
-    if quote_header.version >= 4 {
-        let tcb_info_v3 = collaterals.get_tcbinfov3();
-        assert!(
-            validate_tcbinfov3(&tcb_info_v3, &signing_cert, current_time),
-            "Invalid TCBInfoV3"
-        );
-        tcb_info = TcbInfo::V3(tcb_info_v3);
-    } else {
-        let tcb_info_v2 = collaterals.get_tcbinfov2();
-        assert!(
-            validate_tcbinfov2(&tcb_info_v2, &signing_cert, current_time),
-            "Invalid TCBInfoV2"
-        );
-        tcb_info = TcbInfo::V2(tcb_info_v2);
-    }
+    // validate tcbinfo
+    let tcb_info_v3 = collaterals.get_tcbinfov3();
+    assert!(
+        validate_tcbinfov3(&tcb_info_v3, &signing_cert, current_time),
+        "Invalid TCBInfoV3"
+    );
+    let tcb_info = TcbInfo::V3(tcb_info_v3);
 
     (qe_tcb_status, sgx_extensions, tcb_info)
 }
