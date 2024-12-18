@@ -1,4 +1,3 @@
-use crate::constants::SGX_TEE_TYPE;
 use crate::types::quotes::{body::QuoteBody, version_3::QuoteV3};
 use crate::types::{
     collaterals::IntelCollateral,

@@ -9,7 +9,7 @@ pub mod enclave_identity;
 pub mod quotes;
 pub mod tcbinfo;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TcbStatus {
     OK,
     TcbSwHardeningNeeded,
@@ -57,7 +57,7 @@ impl ToString for TcbStatus {
 // [quote_vesion][tee_type][tcb_status][fmspc][quote_body_raw_bytes]
 // 2 bytes + 4 bytes + 1 byte + 6 bytes + var (SGX_ENCLAVE_REPORT = 384; TD10_REPORT = 584)
 // total: 13 + var bytes
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedOutput {
     pub quote_version: u16,
     pub tee_type: u32,

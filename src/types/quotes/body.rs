@@ -1,4 +1,4 @@
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum QuoteBody {
     SGXQuoteBody(EnclaveReport),
     TD10QuoteBody(TD10ReportBody)
@@ -142,7 +142,7 @@ impl EnclaveReport {
 // [14]     : Tdxtcbcomp15      : QVL compares with TCBInfo.TCBLevels.tcb.tdxtcbcomponents.svn[14]
 // [15]     : Tdxtcbcomp16      : QVL compares with TCBInfo.TCBLevels.tcb.tdxtcbcomponents.svn[15]
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TD10ReportBody {
     pub tee_tcb_svn: [u8; 16],          // [16 bytes]
                                         // Describes the TCB of TDX. (Refer to above)
