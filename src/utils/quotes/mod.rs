@@ -108,9 +108,7 @@ fn common_verify_and_fetch_tcb(
     );
 
     // get the certchain embedded in the ecda quote signature data
-    // this can be one of 5 types
-    // we only handle type 5 for now...
-    // TODO: Add support for all other types
+    // this can be one of 5 types, and we only support type 5
     assert_eq!(qe_cert_data.cert_data_type, 5, "QE Cert Type must be 5");
     let certchain_pems = parse_pem(&qe_cert_data.cert_data).unwrap();
     let certchain = parse_certchain(&certchain_pems);
