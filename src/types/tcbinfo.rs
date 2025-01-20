@@ -585,6 +585,16 @@ pub struct TcbInfoV3Inner {
     pub tcb_levels: Vec<TcbInfoV3TcbLevelItem>,
 }
 
+impl TcbInfoV3Inner {
+    pub fn issue_date(&self) -> Result<chrono::DateTime<chrono::FixedOffset>, chrono::ParseError> {
+        chrono::DateTime::parse_from_rfc3339(&self.issue_date)
+    }
+
+    pub fn next_update(&self) -> Result<chrono::DateTime<chrono::FixedOffset>, chrono::ParseError> {
+        chrono::DateTime::parse_from_rfc3339(&self.next_update)
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TdxModule {

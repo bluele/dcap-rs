@@ -16,7 +16,7 @@ pub fn verify_quote_dcapv3(
     assert!(check_quote_header(&quote.header, 3), "invalid quote header");
 
     let quote_body = QuoteBody::SGXQuoteBody(quote.isv_enclave_report);
-    let (qe_tcb_status, sgx_extensions, tcb_info) = common_verify_and_fetch_tcb(
+    let (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection) = common_verify_and_fetch_tcb(
         &quote.header,
         &quote_body,
         &quote.signature.isv_enclave_report_signature,
@@ -52,6 +52,7 @@ pub fn verify_quote_dcapv3(
         tcb_status,
         fmspc: sgx_extensions.fmspc,
         quote_body,
+        validity_intersection,
         advisory_ids,
     }
 }

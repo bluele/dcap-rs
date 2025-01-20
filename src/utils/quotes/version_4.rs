@@ -32,7 +32,7 @@ pub fn verify_quote_dcapv4(
         panic!("Unsupported CertDataType in QuoteSignatureDataV4");
     };
 
-    let (qe_tcb_status, sgx_extensions, tcb_info) = common_verify_and_fetch_tcb(
+    let (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection) = common_verify_and_fetch_tcb(
         &quote.header,
         &quote.quote_body,
         &quote.signature.quote_signature,
@@ -108,6 +108,7 @@ pub fn verify_quote_dcapv4(
         tcb_status,
         fmspc: sgx_extensions.fmspc,
         quote_body: quote.quote_body,
-        advisory_ids: advisory_ids
+        validity_intersection,
+        advisory_ids
     }
 }

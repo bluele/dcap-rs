@@ -41,7 +41,7 @@ mod tests {
         let sgx_signing_cert_pem = &parse_pem(include_bytes!("../data/signing_cert.pem")).unwrap()[0];
         let sgx_signing_cert = parse_x509_der(&sgx_signing_cert_pem.contents);
 
-        assert!(validate_tcbinfov3(&tcbinfov3, &sgx_signing_cert, PINNED_TIME));
+        assert!(validate_tcbinfov3(&tcbinfov3, &sgx_signing_cert, PINNED_TIME).is_some());
     }
 
     #[test]

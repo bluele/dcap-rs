@@ -1,5 +1,6 @@
 
 use crate::types::tcbinfo::{TcbInfoV2, TcbInfoV3};
+use crate::types::ValidityIntersection;
 use crate::utils::crypto::verify_p256_signature_bytes;
 use crate::X509Certificate;
 
@@ -27,19 +28,13 @@ pub fn validate_tcbinfov2(tcbinfov2: &TcbInfoV2, sgx_signing_cert: &X509Certific
     verify_p256_signature_bytes(&tcbinfov2_signature_data, &tcbinfov2_signature_bytes, sgx_signing_cert.public_key().subject_public_key.as_ref())
 }
 
-pub fn validate_tcbinfov3(tcbinfov3: &TcbInfoV3, sgx_signing_cert: &X509Certificate, current_time: u64) -> bool {
-    // get tcb_info_root time
-    let issue_date = chrono::DateTime::parse_from_rfc3339(&tcbinfov3.tcb_info.issue_date).unwrap();
-    let next_update_date = chrono::DateTime::parse_from_rfc3339(&tcbinfov3.tcb_info.next_update).unwrap();
-
-    // convert the issue_date and next_update_date to seconds since epoch
-    let issue_date_seconds = issue_date.timestamp() as u64;
-    let next_update_seconds = next_update_date.timestamp() as u64;
+pub fn validate_tcbinfov3(tcbinfov3: &TcbInfoV3, sgx_signing_cert: &X509Certificate, current_time: u64) -> Option<ValidityIntersection> {
+    let issue_date_seconds = tcbinfov3.tcb_info.issue_date().unwrap().timestamp().try_into().unwrap();
+    let next_update_seconds = tcbinfov3.tcb_info.next_update().unwrap().timestamp().try_into().unwrap();
 
     // check that the current time is between the issue_date and next_update_date
     if current_time < issue_date_seconds || current_time > next_update_seconds {
-        assert!(false);
-        return false;
+        return None;
     }
 
     // signature is a hex string, we'll convert it to bytes
@@ -48,5 +43,14 @@ pub fn validate_tcbinfov3(tcbinfov3: &TcbInfoV3, sgx_signing_cert: &X509Certific
 
     // verify that the tcb_info_root is signed by the root cert
     let tcbinfov3_signature_data = serde_json::to_vec(&tcbinfov3.tcb_info).unwrap();
-    verify_p256_signature_bytes(&tcbinfov3_signature_data, &tcbinfov3_signature_bytes, sgx_signing_cert.public_key().subject_public_key.as_ref())
+    if verify_p256_signature_bytes(&tcbinfov3_signature_data, &tcbinfov3_signature_bytes, sgx_signing_cert.public_key().subject_public_key.as_ref()) {
+        Some(
+            ValidityIntersection {
+                validity_not_before_max: issue_date_seconds,
+                validity_not_after_min: next_update_seconds,
+            }
+        )
+    } else {
+        None
+    }
 }

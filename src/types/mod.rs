@@ -2,6 +2,7 @@ use self::quotes::body::*;
 use crate::{constants::{ENCLAVE_REPORT_LEN, SGX_TEE_TYPE, TD10_REPORT_LEN, TDX_TEE_TYPE}, utils::hash::keccak256sum};
 use alloy_sol_types::SolValue;
 use serde::{Deserialize, Serialize};
+use x509_parser::prelude::Validity;
 
 pub mod cert;
 pub mod collaterals;
@@ -53,10 +54,48 @@ impl ToString for TcbStatus {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidityIntersection {
+    /// The maximum not_before seconds timestamp of all certificates
+    pub validity_not_before_max: u64,
+    /// The minimum not_after seconds timestamp of all certificates
+    pub validity_not_after_min: u64,
+}
+
+impl Default for ValidityIntersection {
+    fn default() -> Self {
+        ValidityIntersection {
+            validity_not_before_max: 0,
+            validity_not_after_min: u64::MAX,
+        }
+    }
+}
+
+impl ValidityIntersection {
+    pub fn with_certificate(self, certificate_validity: &Validity) -> Self {
+        let not_before = certificate_validity.not_before.timestamp().try_into().unwrap();
+        let not_after = certificate_validity.not_after.timestamp().try_into().unwrap();
+        ValidityIntersection {
+            validity_not_before_max: self.validity_not_before_max.max(not_before),
+            validity_not_after_min: self.validity_not_after_min.min(not_after),
+        }
+    }
+
+    pub fn with_other(self, other: Self) -> Self {
+        ValidityIntersection {
+            validity_not_before_max: self.validity_not_before_max.max(other.validity_not_before_max),
+            validity_not_after_min: self.validity_not_after_min.min(other.validity_not_after_min),
+        }
+    }
+
+    pub fn validate(&self) -> bool {
+        self.validity_not_before_max < self.validity_not_after_min && self.validity_not_before_max > 0 && self.validity_not_after_min < u64::MAX
+    }
+}
+
 // serialization:
-// [quote_vesion][tee_type][tcb_status][fmspc][quote_body_raw_bytes]
-// 2 bytes + 4 bytes + 1 byte + 6 bytes + var (SGX_ENCLAVE_REPORT = 384; TD10_REPORT = 584)
-// total: 13 + var bytes
+// [quote_vesion][tee_type][tcb_status][fmspc][quote_body_raw_bytes][validity_not_before_max][validity_not_after_min][advisory_ids]
+// 2 bytes + 4 bytes + 1 byte + 6 bytes + var (SGX_ENCLAVE_REPORT = 384; TD10_REPORT = 584) + 8 bytes + 8 bytes + var bytes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedOutput {
     pub quote_version: u16,
@@ -64,6 +103,7 @@ pub struct VerifiedOutput {
     pub tcb_status: TcbStatus,
     pub fmspc: [u8; 6],
     pub quote_body: QuoteBody,
+    pub validity_intersection: ValidityIntersection,
     pub advisory_ids: Option<Vec<String>>,
 }
 
@@ -93,6 +133,9 @@ impl VerifiedOutput {
                 output_vec.extend_from_slice(&body.to_bytes());
             }
         }
+
+        output_vec.extend_from_slice(&self.validity_intersection.validity_not_before_max.to_be_bytes());
+        output_vec.extend_from_slice(&self.validity_intersection.validity_not_after_min.to_be_bytes());
 
         if let Some(advisory_ids) = self.advisory_ids.as_ref() {
             let encoded = advisory_ids.abi_encode();
@@ -136,6 +179,13 @@ impl VerifiedOutput {
             _ => panic!("unknown TEE type"),
         };
 
+        let mut validity_not_before_max = [0; 8];
+        validity_not_before_max.copy_from_slice(&slice[offset..offset + 8]);
+        offset += 8;
+        let mut validity_not_after_min = [0; 8];
+        validity_not_after_min.copy_from_slice(&slice[offset..offset + 8]);
+        offset += 8;
+
         let mut advisory_ids = None;
         if offset < slice.len() {
             let advisory_ids_slice = &slice[offset..];
@@ -148,6 +198,10 @@ impl VerifiedOutput {
             tcb_status,
             fmspc,
             quote_body,
+            validity_intersection: ValidityIntersection {
+                validity_not_before_max: u64::from_be_bytes(validity_not_before_max),
+                validity_not_after_min: u64::from_be_bytes(validity_not_after_min),
+            },
             advisory_ids,
         }
     }

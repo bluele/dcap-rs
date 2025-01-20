@@ -155,6 +155,15 @@ pub struct EnclaveIdentityV2Inner {
     pub tcb_levels: Vec<EnclaveIdentityV2TcbLevelItem>,
 }
 
+impl EnclaveIdentityV2Inner {
+    pub fn issue_date(&self) -> Result<chrono::DateTime<chrono::FixedOffset>, chrono::ParseError> {
+        chrono::DateTime::parse_from_rfc3339(&self.issue_date)
+    }
+    pub fn next_update(&self) -> Result<chrono::DateTime<chrono::FixedOffset>, chrono::ParseError> {
+        chrono::DateTime::parse_from_rfc3339(&self.next_update)
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnclaveIdentityV2TcbLevelItem {

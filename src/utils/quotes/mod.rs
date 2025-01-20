@@ -14,7 +14,7 @@ use crate::types::quotes::{
     CertData, QuoteHeader,
 };
 use crate::types::tcbinfo::TcbInfo;
-use crate::types::TcbStatus;
+use crate::types::{TcbStatus, ValidityIntersection};
 use crate::utils::enclave_identity::get_qe_tcbstatus;
 
 use crate::utils::cert::{
@@ -55,12 +55,14 @@ fn common_verify_and_fetch_tcb(
     qe_cert_data: &CertData,
     collaterals: &IntelCollateral,
     current_time: u64,
-) -> (TcbStatus, SgxExtensions, TcbInfo) {
+) -> (TcbStatus, SgxExtensions, TcbInfo, ValidityIntersection) {
     let signing_cert = collaterals.get_sgx_tcb_signing();
     let intel_sgx_root_cert = collaterals.get_sgx_intel_root_ca();
+    let validity_intersection = ValidityIntersection::default().with_certificate(&signing_cert.validity).with_certificate(&intel_sgx_root_cert.validity);
 
     // verify that signing_verifying_key is not revoked and signed by the root cert
     let intel_crls = IntelSgxCrls::from_collaterals(collaterals);
+    let validity_intersection = validity_intersection.with_other(intel_crls.validity_intersection());
 
     // ZL: If collaterals are checked by the caller, then these can be removed
     // check that CRLs are valid
@@ -82,11 +84,13 @@ fn common_verify_and_fetch_tcb(
 
     // validate QEIdentity
     let qeidentityv2 = collaterals.get_qeidentityv2();
-    assert!(validate_enclave_identityv2(
+    let res = validate_enclave_identityv2(
         &qeidentityv2,
         &signing_cert,
         current_time
-    ));
+    );
+    assert!(res.is_some(), "Invalid QEIdentityV2");
+    let validity_intersection = validity_intersection.with_other(res.unwrap());
 
     // verify QEReport then get TCB Status
     assert!(
@@ -112,6 +116,7 @@ fn common_verify_and_fetch_tcb(
     assert_eq!(qe_cert_data.cert_data_type, 5, "QE Cert Type must be 5");
     let certchain_pems = parse_pem(&qe_cert_data.cert_data).unwrap();
     let certchain = parse_certchain(&certchain_pems);
+    assert_eq!(certchain.len(), 3, "Invalid PCK Cert Chain");
     // checks that the certificates used in the certchain are not revoked
     for cert in certchain.iter() {
         assert!(!intel_crls.is_cert_revoked(cert));
@@ -124,6 +129,9 @@ fn common_verify_and_fetch_tcb(
         check_pck_issuer_and_crl(pck_cert, pck_cert_issuer, &intel_crls),
         "Invalid PCK Issuer or CRL"
     );
+    let validity_intersection = validity_intersection.with_certificate(
+        &pck_cert.validity
+    ).with_certificate(&pck_cert_issuer.validity);
 
     // verify that the cert chain signatures are valid
     assert!(
@@ -161,13 +169,15 @@ fn common_verify_and_fetch_tcb(
 
     // validate tcbinfo
     let tcb_info_v3 = collaterals.get_tcbinfov3();
+    let res = validate_tcbinfov3(&tcb_info_v3, &signing_cert, current_time);
     assert!(
-        validate_tcbinfov3(&tcb_info_v3, &signing_cert, current_time),
+        res.is_some(),
         "Invalid TCBInfoV3"
     );
+    let validity_intersection = validity_intersection.with_other(res.unwrap());
     let tcb_info = TcbInfo::V3(tcb_info_v3);
 
-    (qe_tcb_status, sgx_extensions, tcb_info)
+    (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection)
 }
 
 fn check_pck_issuer_and_crl(

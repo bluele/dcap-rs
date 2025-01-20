@@ -3,7 +3,7 @@ use x509_parser::{certificate::X509Certificate, revocation_list::CertificateRevo
 
 use crate::utils::cert::{get_crl_uri, is_cert_revoked, parse_x509_der_multi, pem_to_der};
 
-use super::collaterals::IntelCollateral;
+use super::{collaterals::IntelCollateral, ValidityIntersection};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +93,32 @@ impl<'a> IntelSgxCrls<'a> {
 
         // check if the cert is revoked given the crl
         is_cert_revoked(cert, crl)
+    }
+
+    pub fn validity_intersection(&self) -> ValidityIntersection {
+        let mut max_last_update = i64::MIN;
+        let mut min_next_update = i64::MAX;
+        for crl in [
+            self.sgx_root_ca_crl.as_ref(),
+            self.sgx_pck_processor_crl.as_ref(),
+            self.sgx_pck_platform_crl.as_ref(),
+        ] {
+            if let Some(crl) = crl {
+                let last_update = crl.last_update().timestamp();
+                if last_update > max_last_update {
+                    max_last_update = last_update;
+                }
+                if let Some(next_update) = crl.next_update().map(|t| t.timestamp()) {
+                    if next_update < min_next_update {
+                        min_next_update = next_update;
+                    }
+                }
+            }
+        }
+        ValidityIntersection {
+            validity_not_before_max: max_last_update.try_into().unwrap(),
+            validity_not_after_min: min_next_update.try_into().unwrap(),
+        }
     }
 }
 
