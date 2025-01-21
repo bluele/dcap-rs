@@ -130,7 +130,8 @@ fn common_verify_and_fetch_tcb(
     );
     let validity_intersection = validity_intersection
         .with_certificate(&pck_cert.validity)
-        .with_certificate(&pck_cert_issuer.validity);
+        .with_certificate(&pck_cert_issuer.validity)
+        .with_certificate(&certchain[2].validity);
 
     // verify that the cert chain signatures are valid
     assert!(

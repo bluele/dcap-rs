@@ -110,6 +110,11 @@ impl ValidityIntersection {
             && self.validity_not_before_max > 0
             && self.validity_not_after_min < u64::MAX
     }
+
+    pub fn validate_time(&self, timestamp_seconds: u64) -> bool {
+        timestamp_seconds >= self.validity_not_before_max
+            && timestamp_seconds <= self.validity_not_after_min
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

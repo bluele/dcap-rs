@@ -105,6 +105,10 @@ pub fn verify_quote_dcapv4(
 
     tcb_status = converge_tcb_status_with_qe_tcb(tcb_status, qe_tcb_status);
 
+    assert!(
+        validity_intersection.validate_time(current_time),
+        "certificates are expired"
+    );
     VerifiedOutput {
         quote_version: quote.header.version,
         tee_type: quote.header.tee_type,

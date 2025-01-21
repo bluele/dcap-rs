@@ -94,28 +94,46 @@ mod tests {
             sha256sum(collaterals.sgx_intel_root_ca_der.as_ref().unwrap())
         );
         assert_eq!(
-            verified_output.advisory_ids.unwrap(),
+            verified_output.advisory_ids.clone().unwrap(),
             vec!["INTEL-SA-00334", "INTEL-SA-00615"]
         );
-        assert!(verified_output.validity_intersection.validate(), "validity intersection failed");
+        assert!(
+            verified_output.validity_intersection.validate(),
+            "validity intersection failed"
+        );
+        assert_eq!(
+            verified_output
+                .validity_intersection
+                .validity_not_before_max,
+            1737456928,
+            "invalid `validity_not_before_max`"
+        );
+        assert_eq!(
+            verified_output.validity_intersection.validity_not_after_min, 1740048100,
+            "invalid `validity_not_after_min`"
+        );
+        let bz = verified_output.to_bytes();
+        let vo = VerifiedOutput::from_bytes(&bz);
+        assert_eq!(verified_output, vo);
     }
 
     #[test]
     fn test_verifyv4() {
         let mut collaterals = IntelCollateral::new();
-        collaterals.set_tcbinfo_bytes(include_bytes!("../data/tcbinfov3_00806f050000.json"));
-        collaterals.set_qeidentity_bytes(include_bytes!("../data/qeidentityv2_apiv4.json"));
+        collaterals.set_tcbinfo_bytes(include_bytes!("../data/v4/tcbinfov3_00806f050000.json"));
+        collaterals.set_qeidentity_bytes(include_bytes!("../data/v4/qeidentityv2_apiv4.json"));
         collaterals.set_intel_root_ca_der(include_bytes!(
             "../data/Intel_SGX_Provisioning_Certification_RootCA.cer"
         ));
-        collaterals.set_sgx_tcb_signing_pem(include_bytes!("../data/signing_cert.pem"));
-        collaterals.set_sgx_intel_root_ca_crl_der(include_bytes!("../data/intel_root_ca_crl.der"));
-        collaterals.set_sgx_platform_crl_der(include_bytes!("../data/pck_platform_crl.der"));
-        collaterals.set_sgx_processor_crl_der(include_bytes!("../data/pck_processor_crl.der"));
+        collaterals.set_sgx_tcb_signing_pem(include_bytes!("../data/v4/signing_cert.pem"));
+        collaterals
+            .set_sgx_intel_root_ca_crl_der(include_bytes!("../data/v3/intel_root_ca_crl.der"));
+        collaterals.set_sgx_platform_crl_der(include_bytes!("../data/v3/pck_platform_crl.der"));
+        collaterals.set_sgx_processor_crl_der(include_bytes!("../data/v3/pck_processor_crl.der"));
 
         let dcap_quote = QuoteV4::from_bytes(include_bytes!("../data/quote_tdx_00806f050000.dat"));
 
-        let verified_output = verify_quote_dcapv4(&dcap_quote, &collaterals, PINNED_TIME);
+        let verified_output = verify_quote_dcapv4(&dcap_quote, &collaterals, 1737467060);
         let bz = verified_output.to_bytes();
         let vo = VerifiedOutput::from_bytes(&bz);
         assert_eq!(verified_output, vo);
