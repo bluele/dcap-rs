@@ -46,7 +46,10 @@ pub fn get_tdx_module_identity_and_tcb(
         panic!("TDX module identities not found");
     }
 
-    panic!("TDX Module could not match to any TCB Level for TSX Module ISVSN: {}", tdx_module_isv_svn);
+    panic!(
+        "TDX Module could not match to any TCB Level for TSX Module ISVSN: {}",
+        tdx_module_isv_svn
+    );
 }
 
 // https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TdxModuleCheck.cpp#L99-L137
@@ -66,7 +69,7 @@ pub fn converge_tcb_status_with_tdx_module_tcb(
             } else {
                 converged_tcb_status = tcb_status;
             }
-        },
+        }
         _ => {
             converged_tcb_status = tcb_status;
         }

@@ -1,35 +1,35 @@
 use super::cert::Certificates;
 
+pub mod body;
 pub mod version_3;
 pub mod version_4;
-pub mod body;
 
 use body::EnclaveReport;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QuoteHeader {
-    pub version: u16,                   // [2 bytes]
-                                        // Version of the quote data structure - 4, 5
-    pub att_key_type: u16,              // [2 bytes]
-                                        // Type of the Attestation Key used by the Quoting Enclave -
-                                        // 2 (ECDSA-256-with-P-256 curve) 
-                                        // 3 (ECDSA-384-with-P-384 curve)
-    pub tee_type: u32,                  // [4 bytes]
-                                        // TEE for this Attestation
-                                        // 0x00000000: SGX
-                                        // 0x00000081: TDX
-    pub qe_svn: [u8; 2],                // [2 bytes]
-                                        // Security Version of the Quoting Enclave - 1 (only applicable for SGX Quotes)
-    pub pce_svn: [u8; 2],               // [2 bytes]
-                                        // Security Version of the PCE - 0 (only applicable for SGX Quotes)
-    pub qe_vendor_id: [u8; 16],         // [16 bytes]
-                                        // Unique identifier of the QE Vendor. 
-                                        // Value: 939A7233F79C4CA9940A0DB3957F0607 (Intel® SGX QE Vendor)
-                                        // Note: Each vendor that decides to provide a customized Quote data structure should have
-                                        // unique ID.
-    pub user_data: [u8; 20],            // [20 bytes]
-                                        // Custom user-defined data. For the Intel® SGX and TDX DCAP Quote Generation Libraries, 
-                                        // the first 16 bytes contain a Platform Identifier that is used to link a PCK Certificate to an Enc(PPID).
+    pub version: u16, // [2 bytes]
+    // Version of the quote data structure - 4, 5
+    pub att_key_type: u16, // [2 bytes]
+    // Type of the Attestation Key used by the Quoting Enclave -
+    // 2 (ECDSA-256-with-P-256 curve)
+    // 3 (ECDSA-384-with-P-384 curve)
+    pub tee_type: u32, // [4 bytes]
+    // TEE for this Attestation
+    // 0x00000000: SGX
+    // 0x00000081: TDX
+    pub qe_svn: [u8; 2], // [2 bytes]
+    // Security Version of the Quoting Enclave - 1 (only applicable for SGX Quotes)
+    pub pce_svn: [u8; 2], // [2 bytes]
+    // Security Version of the PCE - 0 (only applicable for SGX Quotes)
+    pub qe_vendor_id: [u8; 16], // [16 bytes]
+    // Unique identifier of the QE Vendor.
+    // Value: 939A7233F79C4CA9940A0DB3957F0607 (Intel® SGX QE Vendor)
+    // Note: Each vendor that decides to provide a customized Quote data structure should have
+    // unique ID.
+    pub user_data: [u8; 20], // [20 bytes]
+                             // Custom user-defined data. For the Intel® SGX and TDX DCAP Quote Generation Libraries,
+                             // the first 16 bytes contain a Platform Identifier that is used to link a PCK Certificate to an Enc(PPID).
 }
 
 impl QuoteHeader {
@@ -80,43 +80,41 @@ pub struct QeAuthData {
 impl QeAuthData {
     pub fn from_bytes(raw_bytes: &[u8]) -> QeAuthData {
         let size = u16::from_le_bytes([raw_bytes[0], raw_bytes[1]]);
-        let data = raw_bytes[2..2+size as usize].to_vec();
-        QeAuthData {
-            size,
-            data,
-        }
+        let data = raw_bytes[2..2 + size as usize].to_vec();
+        QeAuthData { size, data }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CertData {
-    pub cert_data_type: u16,            // [2 bytes]
-                                        // Determines type of data required to verify the QE Report Signature in the Quote Signature Data structure. 
-                                        // 1 - (PCK identifier: PPID in plain text, CPUSVN, and PCESVN)
-                                        // 2 - (PCK identifier: PPID encrypted using RSA-2048-OAEP, CPUSVN, and PCESVN)
-                                        // 3 - (PCK identifier: PPID encrypted using RSA-2048-OAEP, CPUSVN, PCESVN, and QEID)
-                                        // 4 - (PCK Leaf Certificate in plain text; currently not supported)
-                                        // 5 - (Concatenated PCK Cert Chain)
-                                        // 6 - (QE Report Certification Data)
-                                        // 7 - (PLATFORM_MANIFEST; currently not supported)
-    pub cert_data_size: u32,            // [4 bytes]
-                                        // Size of Certification Data field.
-    pub cert_data: Vec<u8>,             // [variable bytes]
-                                        // Data required to verify the QE Report Signature depending on the value of the Certification Data Type:
-                                        // 1: Byte array that contains concatenation of PPID, CPUSVN, PCESVN (LE), PCEID (LE).
-                                        // 2: Byte array that contains concatenation of PPID encrypted using RSA-2048-OAEP, CPUSVN, PCESVN (LE), PCEID (LE).
-                                        // 3: Byte array that contains concatenation of PPID encrypted using RSA-3072-OAEP, CPUSVN, PCESVN (LE), PCEID (LE).
-                                        // 4: PCK Leaf Certificate
-                                        // 5: Concatenated PCK Cert Chain (PEM formatted). PCK Leaf Cert || Intermediate CA Cert || Root CA Cert 
-                                        // 6: QE Report Certification Data
-                                        // 7: PLATFORM_MANIFEST
+    pub cert_data_type: u16, // [2 bytes]
+    // Determines type of data required to verify the QE Report Signature in the Quote Signature Data structure.
+    // 1 - (PCK identifier: PPID in plain text, CPUSVN, and PCESVN)
+    // 2 - (PCK identifier: PPID encrypted using RSA-2048-OAEP, CPUSVN, and PCESVN)
+    // 3 - (PCK identifier: PPID encrypted using RSA-2048-OAEP, CPUSVN, PCESVN, and QEID)
+    // 4 - (PCK Leaf Certificate in plain text; currently not supported)
+    // 5 - (Concatenated PCK Cert Chain)
+    // 6 - (QE Report Certification Data)
+    // 7 - (PLATFORM_MANIFEST; currently not supported)
+    pub cert_data_size: u32, // [4 bytes]
+    // Size of Certification Data field.
+    pub cert_data: Vec<u8>, // [variable bytes]
+                            // Data required to verify the QE Report Signature depending on the value of the Certification Data Type:
+                            // 1: Byte array that contains concatenation of PPID, CPUSVN, PCESVN (LE), PCEID (LE).
+                            // 2: Byte array that contains concatenation of PPID encrypted using RSA-2048-OAEP, CPUSVN, PCESVN (LE), PCEID (LE).
+                            // 3: Byte array that contains concatenation of PPID encrypted using RSA-3072-OAEP, CPUSVN, PCESVN (LE), PCEID (LE).
+                            // 4: PCK Leaf Certificate
+                            // 5: Concatenated PCK Cert Chain (PEM formatted). PCK Leaf Cert || Intermediate CA Cert || Root CA Cert
+                            // 6: QE Report Certification Data
+                            // 7: PLATFORM_MANIFEST
 }
 
 impl CertData {
     pub fn from_bytes(raw_bytes: &[u8]) -> Self {
         let cert_data_type = u16::from_le_bytes([raw_bytes[0], raw_bytes[1]]);
-        let cert_data_size = u32::from_le_bytes([raw_bytes[2], raw_bytes[3], raw_bytes[4], raw_bytes[5]]);
-        let cert_data = raw_bytes[6..6+cert_data_size as usize].to_vec();
+        let cert_data_size =
+            u32::from_le_bytes([raw_bytes[2], raw_bytes[3], raw_bytes[4], raw_bytes[5]]);
+        let cert_data = raw_bytes[6..6 + cert_data_size as usize].to_vec();
 
         CertData {
             cert_data_type,

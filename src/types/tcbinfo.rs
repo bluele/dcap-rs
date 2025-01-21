@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub enum TcbInfo {
     V2(TcbInfoV2),
-    V3(TcbInfoV3)
+    V3(TcbInfoV3),
 }
 
 // TcbInfoV2:
@@ -170,7 +170,7 @@ pub enum TcbInfo {
 //                                     then the value of tcbStatus for the TCB level will not be UpToDate.
 //                                     Otherwise (i.e., either no advisories after or not currently enforced),
 //                                     the value of tcbStatus for the TCB level will not be OutOfDate.
-// 
+//
 //                                     The time shall be in UTC and the encoding shall
 //                                     be compliant to ISO 8601 standard (YYYY-MM-DDThh:mm:ssZ).
 //                             tcbStatus:
@@ -185,29 +185,29 @@ pub enum TcbInfo {
 //                                     - Revoked
 //                                 description: >-
 //                                     TCB level status. One of the following values:
-// 
+//
 //                                     "UpToDate" - TCB level of the SGX platform is up-to-date.
-// 
+//
 //                                     "SWHardeningNeeded" - TCB level of the SGX platform
 //                                     is up-to-date but due to certain issues affecting the
 //                                     platform, additional SW Hardening in the attesting
 //                                     SGX enclaves may be needed.
-// 
+//
 //                                     "ConfigurationNeeded" - TCB level of the SGX platform
 //                                     is up-to-date but additional configuration of SGX
 //                                     platform may be needed.
-// 
+//
 //                                     "ConfigurationAndSWHardeningNeeded" - TCB level of the
 //                                     SGX platform is up-to-date but additional configuration
 //                                     for the platform and SW Hardening in the attesting SGX
 //                                     enclaves may be needed.
-// 
+//
 //                                     "OutOfDate" - TCB level of SGX platform is outdated.
-// 
+//
 //                                     "OutOfDateConfigurationNeeded" - TCB level of SGX
 //                                     platform is outdated and additional configuration
 //                                     of SGX platform may be needed.
-// 
+//
 //                                     "Revoked" - TCB level of SGX platform is revoked.
 //                                     The platform is not trustworthy.
 //                             ZL: This new field is added for v3, seems like a mistake in Intel's documentation.
@@ -218,10 +218,10 @@ pub enum TcbInfo {
 //                                     Array of Advisory IDs referring to Intel security advisories that
 //                                     provide insight into the reason(s) for the value of tcbStatus for
 //                                     this TCB level when the value is not UpToDate.
-// 
+//
 //                                     Note: The value can be different for different
 //                                     FMSPCs.
-// 
+//
 //                                     This field is optional. It will be present only
 //                                     if the list of Advisory IDs is not empty.
 //                                 items:
@@ -414,7 +414,7 @@ pub struct TcbInfoV2TcbLevel {
 //                                                 then the value of tcbStatus for the TCB level will not be UpToDate.
 //                                                 Otherwise (i.e., either no advisories after or not currently enforced),
 //                                                 the value of tcbStatus for the TCB level will not be OutOfDate.
-// 
+//
 //                                                 The time shall be in UTC and the encoding shall
 //                                                 be compliant to ISO 8601 standard (YYYY-MM-DDThh:mm:ssZ).
 //                                         tcbStatus:
@@ -425,11 +425,11 @@ pub struct TcbInfoV2TcbLevel {
 //                                                 - Revoked
 //                                             description: >-
 //                                                 TCB level status. One of the following values:
-// 
+//
 //                                                 "UpToDate" - TCB level of the TDX SEAM Module is up-to-date.
-// 
+//
 //                                                 "OutOfDate" - TCB level of TDX SEAM Module is outdated.
-// 
+//
 //                                                 "Revoked" - TCB level of TDX SEAM Module is revoked.
 //                                                 The platform is not trustworthy.
 //                                         advisoryIDs:
@@ -438,7 +438,7 @@ pub struct TcbInfoV2TcbLevel {
 //                                                 Array of Advisory IDs referring to Intel security advisories that
 //                                                 provide insight into the reason(s) for the value of tcbStatus for
 //                                                 this TCB level when the value is not UpToDate.
-// 
+//
 //                                                 This field is optional. It will be present only
 //                                                 if the list of Advisory IDs is not empty.
 //                                             items:
@@ -476,7 +476,7 @@ pub struct TcbInfoV2TcbLevel {
 //                                     tdxtcbcomponents:
 //                                         description: >-
 //                                             Array of 16 TDX TCB Components (as in TEE TCB SVN array in TD Report) encoded as a JSON array of TCB Component objects.
-// 
+//
 //                                             This field is optional and only present in TDX TCB Info.
 //                                         items:
 //                                             properties:
@@ -498,7 +498,7 @@ pub struct TcbInfoV2TcbLevel {
 //                                     then the value of tcbStatus for the TCB level will not be UpToDate.
 //                                     Otherwise (i.e., either no advisories after or not currently enforced),
 //                                     the value of tcbStatus for the TCB level will not be OutOfDate.
-// 
+//
 //                                     The time shall be in UTC and the encoding shall
 //                                     be compliant to ISO 8601 standard (YYYY-MM-DDThh:mm:ssZ).
 //                             tcbStatus:
@@ -513,29 +513,29 @@ pub struct TcbInfoV2TcbLevel {
 //                                     - Revoked
 //                                 description: >-
 //                                     TCB level status. One of the following values:
-// 
+//
 //                                     "UpToDate" - TCB level of the SGX platform is up-to-date.
-// 
+//
 //                                     "SWHardeningNeeded" - TCB level of the SGX platform
 //                                     is up-to-date but due to certain issues affecting the
 //                                     platform, additional SW Hardening in the attesting
 //                                     SGX enclaves may be needed.
-// 
+//
 //                                     "ConfigurationNeeded" - TCB level of the SGX platform
 //                                     is up-to-date but additional configuration of SGX
 //                                     platform may be needed.
-// 
+//
 //                                     "ConfigurationAndSWHardeningNeeded" - TCB level of the
 //                                     SGX platform is up-to-date but additional configuration
 //                                     for the platform and SW Hardening in the attesting SGX
 //                                     enclaves may be needed.
-// 
+//
 //                                     "OutOfDate" - TCB level of SGX platform is outdated.
-// 
+//
 //                                     "OutOfDateConfigurationNeeded" - TCB level of SGX
 //                                     platform is outdated and additional configuration
 //                                     of SGX platform may be needed.
-// 
+//
 //                                     "Revoked" - TCB level of SGX platform is revoked.
 //                                     The platform is not trustworthy.
 //                             advisoryIDs:
@@ -544,10 +544,10 @@ pub struct TcbInfoV2TcbLevel {
 //                                     Array of Advisory IDs referring to Intel security advisories that
 //                                     provide insight into the reason(s) for the value of tcbStatus for
 //                                     this TCB level when the value is not UpToDate.
-// 
+//
 //                                     Note: The value can be different for different
 //                                     FMSPCs.
-// 
+//
 //                                     This field is optional. It will be present only
 //                                     if the list of Advisory IDs is not empty.
 //                                 items:
@@ -598,20 +598,20 @@ impl TcbInfoV3Inner {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TdxModule {
-    pub mrsigner: String,                   // Base 16-encoded string representation of the measurement of a TDX SEAM module’s signer.
-    pub attributes: String,                 // Hex-encoded byte array (8 bytes) representing attributes "golden" value.
-    pub attributes_mask: String,            // Hex-encoded byte array (8 bytes) representing mask to be applied to TDX SEAM module’s
-                                            // attributes value retrieved from the platform
+    pub mrsigner: String, // Base 16-encoded string representation of the measurement of a TDX SEAM module’s signer.
+    pub attributes: String, // Hex-encoded byte array (8 bytes) representing attributes "golden" value.
+    pub attributes_mask: String, // Hex-encoded byte array (8 bytes) representing mask to be applied to TDX SEAM module’s
+                                 // attributes value retrieved from the platform
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TdxModuleIdentities {
-    pub id: String,                         // Identifier of TDX Module
-    pub mrsigner: String,                   // Base 16-encoded string representation of the measurement of a TDX SEAM module’s signer.
-    pub attributes: String,                 // Base 16-encoded string representation of the byte array (8 bytes) representing attributes "golden" value.
-    pub attributes_mask: String,            // Base 16-encoded string representation of the byte array (8 bytes) representing mask to be applied to TDX SEAM module’s
-                                            // attributes value retrieved from the platform
+    pub id: String,              // Identifier of TDX Module
+    pub mrsigner: String, // Base 16-encoded string representation of the measurement of a TDX SEAM module’s signer.
+    pub attributes: String, // Base 16-encoded string representation of the byte array (8 bytes) representing attributes "golden" value.
+    pub attributes_mask: String, // Base 16-encoded string representation of the byte array (8 bytes) representing mask to be applied to TDX SEAM module’s
+    // attributes value retrieved from the platform
     pub tcb_levels: Vec<TdxModuleIdentitiesTcbLevelItem>,
 }
 
@@ -624,13 +624,12 @@ pub struct TdxModuleIdentitiesTcbLevelItem {
     #[serde(rename(serialize = "advisoryIDs", deserialize = "advisoryIDs"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub advisory_ids: Option<Vec<String>>,
-
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TdxModuleIdentitiesTcbLevel {
-    pub isvsvn: u8,                        // TDX SEAM module’s ISV SVN
+    pub isvsvn: u8, // TDX SEAM module’s ISV SVN
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -656,10 +655,10 @@ pub struct TcbInfoV3TcbLevel {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TcbComponent {
-    pub svn: u8,                                                   // SVN of TCB Component.
+    pub svn: u8, // SVN of TCB Component.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub category: Option<String>,                                   // Category of TCB Component (e.g. BIOS, OS/VMM).
+    pub category: Option<String>, // Category of TCB Component (e.g. BIOS, OS/VMM).
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename(serialize = "type", deserialize = "type"))]
-    pub type_: Option<String>,                                      // Type of TCB Component (e.g. SGX Late Microcode Update, TXT SINIT).
+    pub type_: Option<String>, // Type of TCB Component (e.g. SGX Late Microcode Update, TXT SINIT).
 }

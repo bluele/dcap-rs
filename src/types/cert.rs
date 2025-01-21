@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use x509_parser::{certificate::X509Certificate, revocation_list::CertificateRevocationList};
 
 use crate::utils::cert::{get_crl_uri, is_cert_revoked, parse_x509_der_multi, pem_to_der};
@@ -25,9 +25,8 @@ pub struct SgxExtensionTcbLevel {
     pub sgxtcbcomp15svn: u8,
     pub sgxtcbcomp16svn: u8,
     pub pcesvn: u16,
-    pub cpusvn: [u8; 16]
+    pub cpusvn: [u8; 16],
 }
-
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SgxExtensions {
@@ -55,7 +54,11 @@ pub struct IntelSgxCrls<'a> {
 }
 
 impl<'a> IntelSgxCrls<'a> {
-    pub fn new(sgx_root_ca_crl: Option<CertificateRevocationList<'a>>, sgx_pck_processor_crl: Option<CertificateRevocationList<'a>>, sgx_pck_platform_crl: Option<CertificateRevocationList<'a>>) -> Self {
+    pub fn new(
+        sgx_root_ca_crl: Option<CertificateRevocationList<'a>>,
+        sgx_pck_processor_crl: Option<CertificateRevocationList<'a>>,
+        sgx_pck_platform_crl: Option<CertificateRevocationList<'a>>,
+    ) -> Self {
         Self {
             sgx_root_ca_crl,
             sgx_pck_processor_crl,

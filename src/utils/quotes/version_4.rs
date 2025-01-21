@@ -3,10 +3,12 @@ use crate::types::quotes::body::QuoteBody;
 use crate::types::quotes::{version_4::QuoteV4, CertDataType};
 use crate::types::TcbStatus;
 use crate::types::{
+    collaterals::IntelCollateral,
     tcbinfo::{TcbInfo, TcbInfoV3},
-    collaterals::IntelCollateral, VerifiedOutput,
+    VerifiedOutput,
 };
 use crate::utils::cert::get_sgx_tdx_fmspc_tcbstatus_v3;
+use crate::utils::hash::sha256sum;
 use crate::utils::tdx_module::{
     converge_tcb_status_with_tdx_module_tcb, get_tdx_module_identity_and_tcb,
 };
@@ -32,18 +34,19 @@ pub fn verify_quote_dcapv4(
         panic!("Unsupported CertDataType in QuoteSignatureDataV4");
     };
 
-    let (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection) = common_verify_and_fetch_tcb(
-        &quote.header,
-        &quote.quote_body,
-        &quote.signature.quote_signature,
-        &quote.signature.ecdsa_attestation_key,
-        &qe_report_cert_data.qe_report,
-        &qe_report_cert_data.qe_report_signature,
-        &qe_report_cert_data.qe_auth_data.data,
-        &qe_report_cert_data.qe_cert_data,
-        collaterals,
-        current_time,
-    );
+    let (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection) =
+        common_verify_and_fetch_tcb(
+            &quote.header,
+            &quote.quote_body,
+            &quote.signature.quote_signature,
+            &quote.signature.ecdsa_attestation_key,
+            &qe_report_cert_data.qe_report,
+            &qe_report_cert_data.qe_report_signature,
+            &qe_report_cert_data.qe_auth_data.data,
+            &qe_report_cert_data.qe_cert_data,
+            collaterals,
+            current_time,
+        );
 
     let tcb_info_v3: TcbInfoV3;
     if let TcbInfo::V3(tcb) = tcb_info {
@@ -62,12 +65,12 @@ pub fn verify_quote_dcapv4(
     let tee_type = quote.header.tee_type;
     let (sgx_tcb_status, tdx_tcb_status, advisory_ids) =
         get_sgx_tdx_fmspc_tcbstatus_v3(tee_type, &sgx_extensions, &tee_tcb_svn, &tcb_info_v3);
-    
+
     assert!(
         sgx_tcb_status != TcbStatus::TcbRevoked || tdx_tcb_status != TcbStatus::TcbRevoked,
         "FMSPC TCB Revoked"
     );
-    
+
     let mut tcb_status: TcbStatus;
     if quote.header.tee_type == SGX_TEE_TYPE {
         tcb_status = sgx_tcb_status;
@@ -107,8 +110,9 @@ pub fn verify_quote_dcapv4(
         tee_type: quote.header.tee_type,
         tcb_status,
         fmspc: sgx_extensions.fmspc,
-        quote_body: quote.quote_body,
+        sgx_intel_root_ca_hash: sha256sum(collaterals.sgx_intel_root_ca_der.as_ref().unwrap()),
         validity_intersection,
-        advisory_ids
+        quote_body: quote.quote_body,
+        advisory_ids,
     }
 }

@@ -1,4 +1,4 @@
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use sha3::Keccak256;
 
 pub fn sha256sum(data: &[u8]) -> [u8; 32] {

@@ -97,7 +97,7 @@ use serde::{Deserialize, Serialize};
 //                                     then the value of tcbStatus for the TCB level will not be UpToDate.
 //                                     Otherwise (i.e., either no advisories after or not currently enforced),
 //                                     the value of tcbStatus for the TCB level will not be OutOfDate.
-// 
+//
 //                                     The time shall be in UTC and the encoding shall
 //                                     be compliant to ISO 8601 standard (YYYY-MM-DDThh:mm:ssZ).
 //                             tcbStatus:
@@ -108,11 +108,11 @@ use serde::{Deserialize, Serialize};
 //                                     - Revoked
 //                                 description: >-
 //                                     TCB level status. One of the following values:
-// 
+//
 //                                     "UpToDate" - TCB level of the SGX platform is up-to-date.
-// 
+//
 //                                     "OutOfDate" - TCB level of SGX platform is outdated.
-// 
+//
 //                                     "Revoked" - TCB level of SGX platform is revoked.
 //                                     The platform is not trustworthy.
 //                             advisoryIDs:
@@ -121,7 +121,7 @@ use serde::{Deserialize, Serialize};
 //                                     Array of Advisory IDs referring to Intel security advisories that
 //                                     provide insight into the reason(s) for the value of tcbStatus for
 //                                     this TCB level when the value is not UpToDate.
-// 
+//
 //                                     This field is optional. It will be present only
 //                                     if the list of Advisory IDs is not empty.
 //                                 items:

@@ -1,57 +1,57 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum QuoteBody {
     SGXQuoteBody(EnclaveReport),
-    TD10QuoteBody(TD10ReportBody)
+    TD10QuoteBody(TD10ReportBody),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EnclaveReport {
-    pub cpu_svn: [u8; 16],      // [16 bytes]
-                                // Security Version of the CPU (raw value)
-    pub misc_select: [u8; 4],   // [4 bytes]
-                                // SSA Frame extended feature set. 
-                                // Reports what SECS.MISCSELECT settings are used in the enclave. You can limit the
-                                // allowed MISCSELECT settings in the sigstruct using MISCSELECT/MISCMASK.
-    pub reserved_1: [u8; 28],   // [28 bytes]
-                                // Reserved for future use - 0
-    pub attributes: [u8; 16],   // [16 bytes]
-                                // Set of flags describing attributes of the enclave.
-                                // Reports what SECS.ATTRIBUTES settings are used in the enclave. The ISV can limit what
-                                // SECS.ATTRIBUTES can be used when loading the enclave through parameters to the SGX Signtool.
-                                // The Signtool will produce a SIGSTRUCT with ATTRIBUTES and ATTRIBUTESMASK 
-                                // which determine allowed ATTRIBUTES.
-                                // - For each SIGSTRUCT.ATTRIBUTESMASK bit that is set, then corresponding bit in the
-                                // SECS.ATTRIBUTES must match the same bit in SIGSTRUCT.ATTRIBUTES.
-    pub mrenclave: [u8; 32],    // [32 bytes] 
-                                // Measurement of the enclave. 
-                                // The MRENCLAVE value is the SHA256 hash of the ENCLAVEHASH field in the SIGSTRUCT.
-    pub reserved_2: [u8; 32],   // [32 bytes] 
-                                // Reserved for future use - 0
-    pub mrsigner: [u8; 32],     // [32 bytes]
-                                // Measurement of the enclave signer. 
-                                // The MRSIGNER value is the SHA256 hash of the MODULUS field in the SIGSTRUCT.
-    pub reserved_3: [u8; 96],   // [96 bytes]
-                                // Reserved for future use - 0
-    pub isv_prod_id: u16,       // [2 bytes]
-                                // Product ID of the enclave. 
-                                // The ISV should configure a unique ISVProdID for each product which may
-                                // want to share sealed data between enclaves signed with a specific MRSIGNER. The ISV
-                                // may want to supply different data to identical enclaves signed for different products.
-    pub isv_svn: u16,           // [2 bytes]
-                                // Security Version of the enclave
-    pub reserved_4: [u8; 60],   // [60 bytes]
-                                // Reserved for future use - 0
-    pub report_data: [u8; 64],  // [64 bytes]
-                                // Additional report data.
-                                // The enclave is free to provide 64 bytes of custom data to the REPORT.
-                                // This can be used to provide specific data from the enclave or it can be used to hold 
-                                // a hash of a larger block of data which is provided with the quote. 
-                                // The verification of the quote signature confirms the integrity of the
-                                // report data (and the rest of the REPORT body).
+    pub cpu_svn: [u8; 16], // [16 bytes]
+    // Security Version of the CPU (raw value)
+    pub misc_select: [u8; 4], // [4 bytes]
+    // SSA Frame extended feature set.
+    // Reports what SECS.MISCSELECT settings are used in the enclave. You can limit the
+    // allowed MISCSELECT settings in the sigstruct using MISCSELECT/MISCMASK.
+    pub reserved_1: [u8; 28], // [28 bytes]
+    // Reserved for future use - 0
+    pub attributes: [u8; 16], // [16 bytes]
+    // Set of flags describing attributes of the enclave.
+    // Reports what SECS.ATTRIBUTES settings are used in the enclave. The ISV can limit what
+    // SECS.ATTRIBUTES can be used when loading the enclave through parameters to the SGX Signtool.
+    // The Signtool will produce a SIGSTRUCT with ATTRIBUTES and ATTRIBUTESMASK
+    // which determine allowed ATTRIBUTES.
+    // - For each SIGSTRUCT.ATTRIBUTESMASK bit that is set, then corresponding bit in the
+    // SECS.ATTRIBUTES must match the same bit in SIGSTRUCT.ATTRIBUTES.
+    pub mrenclave: [u8; 32], // [32 bytes]
+    // Measurement of the enclave.
+    // The MRENCLAVE value is the SHA256 hash of the ENCLAVEHASH field in the SIGSTRUCT.
+    pub reserved_2: [u8; 32], // [32 bytes]
+    // Reserved for future use - 0
+    pub mrsigner: [u8; 32], // [32 bytes]
+    // Measurement of the enclave signer.
+    // The MRSIGNER value is the SHA256 hash of the MODULUS field in the SIGSTRUCT.
+    pub reserved_3: [u8; 96], // [96 bytes]
+    // Reserved for future use - 0
+    pub isv_prod_id: u16, // [2 bytes]
+    // Product ID of the enclave.
+    // The ISV should configure a unique ISVProdID for each product which may
+    // want to share sealed data between enclaves signed with a specific MRSIGNER. The ISV
+    // may want to supply different data to identical enclaves signed for different products.
+    pub isv_svn: u16, // [2 bytes]
+    // Security Version of the enclave
+    pub reserved_4: [u8; 60], // [60 bytes]
+    // Reserved for future use - 0
+    pub report_data: [u8; 64], // [64 bytes]
+                               // Additional report data.
+                               // The enclave is free to provide 64 bytes of custom data to the REPORT.
+                               // This can be used to provide specific data from the enclave or it can be used to hold
+                               // a hash of a larger block of data which is provided with the quote.
+                               // The verification of the quote signature confirms the integrity of the
+                               // report data (and the rest of the REPORT body).
 }
 
 impl EnclaveReport {
-    pub fn from_bytes(raw_bytes: &[u8]) -> EnclaveReport{
+    pub fn from_bytes(raw_bytes: &[u8]) -> EnclaveReport {
         assert_eq!(raw_bytes.len(), 384);
         let mut obj = EnclaveReport {
             cpu_svn: [0; 16],
@@ -108,9 +108,9 @@ impl EnclaveReport {
 
 // TD Attributes:
 // [bits]   : [description]
-// [0:7]    : (TUD) TD Under Debug flags. 
+// [0:7]    : (TUD) TD Under Debug flags.
 //            If any of the bits in this group are set to 1, the TD is untrusted.
-//            [0]     - (DEBUG) Defines whether the TD runs in TD debug mode (set to 1) or not (set to 0). 
+//            [0]     - (DEBUG) Defines whether the TD runs in TD debug mode (set to 1) or not (set to 0).
 //                      In TD debug mode, the CPU state and private memory are accessible by the host VMM.
 //            [1:7]   - (RESERVED) Reserved for future TUD flags, must be 0.
 // [8:31]   : (SEC) Attributes that may impact the security of the TD
@@ -144,40 +144,40 @@ impl EnclaveReport {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TD10ReportBody {
-    pub tee_tcb_svn: [u8; 16],          // [16 bytes]
-                                        // Describes the TCB of TDX. (Refer to above)
-    pub mrseam: [u8; 48],               // [48 bytes]
-                                        // Measurement of the TDX Module.
-    pub mrsignerseam: [u8; 48],         // [48 bytes]
-                                        // Zero for Intel TDX Module
-    pub seam_attributes: u64,           // [8 bytes]
-                                        // Must be zero for TDX 1.0
-    pub td_attributes: u64,             // [8 bytes]
-                                        // TD Attributes (Refer to above)
-    pub xfam: u64,                      // [8 bytes]
-                                        // XFAM (eXtended Features Available Mask) is defined as a 64b bitmap, which has the same format as XCR0 or IA32_XSS MSR.
-    pub mrtd: [u8; 48],                 // [48 bytes]
-                                        // (SHA384) Measurement of the initial contents of the TD.
-    pub mrconfigid: [u8; 48],           // [48 bytes]
-                                        // Software-defined ID for non-owner-defined configuration of the TD, e.g., runtime or OS configuration.
-    pub mrowner: [u8; 48],              // [48 bytes]
-                                        // Software-defined ID for the TD’s owner
-    pub mrownerconfig: [u8; 48],        // [48 bytes]
-                                        // Software-defined ID for owner-defined configuration of the TD, 
-                                        // e.g., specific to the workload rather than the runtime or OS.
-    pub rtmr0: [u8; 48],                // [48 bytes]
-                                        // (SHA384) Root of Trust for Measurement (RTM) for the TD.
-    pub rtmr1: [u8; 48],                // [48 bytes]
-                                        // (SHA384) Root of Trust for Measurement (RTM) for the TD.
-    pub rtmr2: [u8; 48],                // [48 bytes]
-                                        // (SHA384) Root of Trust for Measurement (RTM) for the TD.
-    pub rtmr3: [u8; 48],                // [48 bytes]
-                                        // (SHA384) Root of Trust for Measurement (RTM) for the TD.
-    pub report_data: [u8; 64],          // [64 bytes]
-                                        // Additional report data.
-                                        // The TD is free to provide 64 bytes of custom data to the REPORT.
-                                        // This can be used to provide specific data from the TD or it can be used to hold a hash of a larger block of data which is provided with the quote.
-                                        // Note that the signature of a TD Quote covers the REPORTDATA field. As a result, the integrity is protected with a key rooted in an Intel CA.
+    pub tee_tcb_svn: [u8; 16], // [16 bytes]
+    // Describes the TCB of TDX. (Refer to above)
+    pub mrseam: [u8; 48], // [48 bytes]
+    // Measurement of the TDX Module.
+    pub mrsignerseam: [u8; 48], // [48 bytes]
+    // Zero for Intel TDX Module
+    pub seam_attributes: u64, // [8 bytes]
+    // Must be zero for TDX 1.0
+    pub td_attributes: u64, // [8 bytes]
+    // TD Attributes (Refer to above)
+    pub xfam: u64, // [8 bytes]
+    // XFAM (eXtended Features Available Mask) is defined as a 64b bitmap, which has the same format as XCR0 or IA32_XSS MSR.
+    pub mrtd: [u8; 48], // [48 bytes]
+    // (SHA384) Measurement of the initial contents of the TD.
+    pub mrconfigid: [u8; 48], // [48 bytes]
+    // Software-defined ID for non-owner-defined configuration of the TD, e.g., runtime or OS configuration.
+    pub mrowner: [u8; 48], // [48 bytes]
+    // Software-defined ID for the TD’s owner
+    pub mrownerconfig: [u8; 48], // [48 bytes]
+    // Software-defined ID for owner-defined configuration of the TD,
+    // e.g., specific to the workload rather than the runtime or OS.
+    pub rtmr0: [u8; 48], // [48 bytes]
+    // (SHA384) Root of Trust for Measurement (RTM) for the TD.
+    pub rtmr1: [u8; 48], // [48 bytes]
+    // (SHA384) Root of Trust for Measurement (RTM) for the TD.
+    pub rtmr2: [u8; 48], // [48 bytes]
+    // (SHA384) Root of Trust for Measurement (RTM) for the TD.
+    pub rtmr3: [u8; 48], // [48 bytes]
+    // (SHA384) Root of Trust for Measurement (RTM) for the TD.
+    pub report_data: [u8; 64], // [64 bytes]
+                               // Additional report data.
+                               // The TD is free to provide 64 bytes of custom data to the REPORT.
+                               // This can be used to provide specific data from the TD or it can be used to hold a hash of a larger block of data which is provided with the quote.
+                               // Note that the signature of a TD Quote covers the REPORTDATA field. As a result, the integrity is protected with a key rooted in an Intel CA.
 }
 
 impl TD10ReportBody {
@@ -189,9 +189,36 @@ impl TD10ReportBody {
         mrseam.copy_from_slice(&raw_bytes[16..64]);
         let mut mrsignerseam = [0; 48];
         mrsignerseam.copy_from_slice(&raw_bytes[64..112]);
-        let seam_attributes = u64::from_le_bytes([raw_bytes[112], raw_bytes[113], raw_bytes[114], raw_bytes[115], raw_bytes[116], raw_bytes[117], raw_bytes[118], raw_bytes[119]]);
-        let td_attributes = u64::from_le_bytes([raw_bytes[120], raw_bytes[121], raw_bytes[122], raw_bytes[123], raw_bytes[124], raw_bytes[125], raw_bytes[126], raw_bytes[127]]);
-        let xfam = u64::from_le_bytes([raw_bytes[128], raw_bytes[129], raw_bytes[130], raw_bytes[131], raw_bytes[132], raw_bytes[133], raw_bytes[134], raw_bytes[135]]);
+        let seam_attributes = u64::from_le_bytes([
+            raw_bytes[112],
+            raw_bytes[113],
+            raw_bytes[114],
+            raw_bytes[115],
+            raw_bytes[116],
+            raw_bytes[117],
+            raw_bytes[118],
+            raw_bytes[119],
+        ]);
+        let td_attributes = u64::from_le_bytes([
+            raw_bytes[120],
+            raw_bytes[121],
+            raw_bytes[122],
+            raw_bytes[123],
+            raw_bytes[124],
+            raw_bytes[125],
+            raw_bytes[126],
+            raw_bytes[127],
+        ]);
+        let xfam = u64::from_le_bytes([
+            raw_bytes[128],
+            raw_bytes[129],
+            raw_bytes[130],
+            raw_bytes[131],
+            raw_bytes[132],
+            raw_bytes[133],
+            raw_bytes[134],
+            raw_bytes[135],
+        ]);
         let mut mrtd = [0; 48];
         mrtd.copy_from_slice(&raw_bytes[136..184]);
         let mut mrconfigid = [0; 48];

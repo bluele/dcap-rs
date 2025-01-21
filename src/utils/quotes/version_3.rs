@@ -5,6 +5,7 @@ use crate::types::{
     TcbStatus, VerifiedOutput,
 };
 use crate::utils::cert::get_sgx_tdx_fmspc_tcbstatus_v3;
+use crate::utils::hash::sha256sum;
 
 use super::{check_quote_header, common_verify_and_fetch_tcb, converge_tcb_status_with_qe_tcb};
 
@@ -16,18 +17,19 @@ pub fn verify_quote_dcapv3(
     assert!(check_quote_header(&quote.header, 3), "invalid quote header");
 
     let quote_body = QuoteBody::SGXQuoteBody(quote.isv_enclave_report);
-    let (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection) = common_verify_and_fetch_tcb(
-        &quote.header,
-        &quote_body,
-        &quote.signature.isv_enclave_report_signature,
-        &quote.signature.ecdsa_attestation_key,
-        &quote.signature.qe_report,
-        &quote.signature.qe_report_signature,
-        &quote.signature.qe_auth_data.data,
-        &quote.signature.qe_cert_data,
-        collaterals,
-        current_time,
-    );
+    let (qe_tcb_status, sgx_extensions, tcb_info, validity_intersection) =
+        common_verify_and_fetch_tcb(
+            &quote.header,
+            &quote_body,
+            &quote.signature.isv_enclave_report_signature,
+            &quote.signature.ecdsa_attestation_key,
+            &quote.signature.qe_report,
+            &quote.signature.qe_report_signature,
+            &quote.signature.qe_auth_data.data,
+            &quote.signature.qe_cert_data,
+            collaterals,
+            current_time,
+        );
 
     let tcb_info_v3: TcbInfoV3;
     if let TcbInfo::V3(tcb) = tcb_info {
@@ -51,8 +53,9 @@ pub fn verify_quote_dcapv3(
         tee_type: quote.header.tee_type,
         tcb_status,
         fmspc: sgx_extensions.fmspc,
-        quote_body,
+        sgx_intel_root_ca_hash: sha256sum(collaterals.sgx_intel_root_ca_der.as_ref().unwrap()),
         validity_intersection,
+        quote_body,
         advisory_ids,
     }
 }
