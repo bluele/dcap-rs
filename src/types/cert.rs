@@ -69,31 +69,19 @@ impl<'a> IntelSgxCrls<'a> {
     pub fn from_collaterals(collaterals: &'a IntelCollateral) -> Self {
         let sgx_root_ca_crl = collaterals.get_sgx_intel_root_ca_crl();
         let sgx_pck_processor_crl = collaterals.get_sgx_pck_processor_crl();
-        let sgx_pck_platform_crl = collaterals.get_sgx_pck_platform_crl();
+        let sgx_pck_platform_crl: Option<CertificateRevocationList<'_>> =
+            collaterals.get_sgx_pck_platform_crl();
 
         Self::new(sgx_root_ca_crl, sgx_pck_processor_crl, sgx_pck_platform_crl)
     }
 
     pub fn is_cert_revoked(&self, cert: &X509Certificate) -> bool {
-        let crl = match get_crl_uri(cert) {
-            Some(crl_uri) => {
-                if crl_uri.contains("https://api.trustedservices.intel.com/sgx/certification/v3/pckcrl?ca=platform")
-                    || crl_uri.contains("https://api.trustedservices.intel.com/sgx/certification/v4/pckcrl?ca=platform") {
-                    self.sgx_pck_platform_crl.as_ref()
-                } else if crl_uri.contains("https://api.trustedservices.intel.com/sgx/certification/v3/pckcrl?ca=processor")
-                    || crl_uri.contains("https://api.trustedservices.intel.com/sgx/certification/v4/pckcrl?ca=processor") {
-                    self.sgx_pck_processor_crl.as_ref()
-                } else if crl_uri.contains("https://certificates.trustedservices.intel.com/IntelSGXRootCA.der") {
-                    self.sgx_root_ca_crl.as_ref()
-                } else {
-                    panic!("Unknown CRL URI: {}", crl_uri);
-                }
-            },
-            None => {
-                panic!("No CRL URI found in certificate");
-            }
-        }.unwrap();
-
+        let crl = match get_crl_type(cert) {
+            Some(CrlType::SgxRootCa) => self.sgx_root_ca_crl.as_ref().unwrap(),
+            Some(CrlType::SgxPckProcessor) => self.sgx_pck_processor_crl.as_ref().unwrap(),
+            Some(CrlType::SgxPckPlatform) => self.sgx_pck_platform_crl.as_ref().unwrap(),
+            None => panic!("Unknown CRL URI"),
+        };
         // check if the cert is revoked given the crl
         is_cert_revoked(cert, crl)
     }
@@ -122,6 +110,35 @@ impl<'a> IntelSgxCrls<'a> {
             validity_not_before_max: max_last_update.try_into().unwrap(),
             validity_not_after_min: min_next_update.try_into().unwrap(),
         }
+    }
+}
+
+pub enum CrlType {
+    SgxRootCa,
+    SgxPckProcessor,
+    SgxPckPlatform,
+}
+
+pub fn get_crl_type(cert: &X509Certificate) -> Option<CrlType> {
+    let crl_uri = get_crl_uri(cert)?;
+    if crl_uri.contains("https://certificates.trustedservices.intel.com/IntelSGXRootCA.der") {
+        Some(CrlType::SgxRootCa)
+    } else if crl_uri
+        .contains("https://api.trustedservices.intel.com/sgx/certification/v3/pckcrl?ca=processor")
+        || crl_uri.contains(
+            "https://api.trustedservices.intel.com/sgx/certification/v4/pckcrl?ca=processor",
+        )
+    {
+        Some(CrlType::SgxPckProcessor)
+    } else if crl_uri
+        .contains("https://api.trustedservices.intel.com/sgx/certification/v3/pckcrl?ca=platform")
+        || crl_uri.contains(
+            "https://api.trustedservices.intel.com/sgx/certification/v4/pckcrl?ca=platform",
+        )
+    {
+        Some(CrlType::SgxPckPlatform)
+    } else {
+        None
     }
 }
 
