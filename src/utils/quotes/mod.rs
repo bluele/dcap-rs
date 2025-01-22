@@ -7,7 +7,7 @@ use crate::constants::{ECDSA_256_WITH_P256_CURVE, INTEL_QE_VENDOR_ID};
 use crate::types::enclave_identity::EnclaveIdentityV2;
 use crate::utils::hash::sha256sum;
 
-use crate::types::cert::{IntelSgxCrls, SgxExtensions};
+use crate::types::cert::{CrlType, IntelSgxCrls, SgxExtensions};
 use crate::types::collaterals::IntelCollateral;
 use crate::types::quotes::{
     body::{EnclaveReport, QuoteBody},
@@ -69,14 +69,10 @@ fn common_verify_and_fetch_tcb(
 
     // ZL: If collaterals are checked by the caller, then these can be removed
     // check that CRLs are valid
-    match &intel_crls.sgx_root_ca_crl {
-        Some(crl) => {
-            assert!(verify_crl(crl, &intel_sgx_root_cert));
-        }
-        None => {
-            panic!("No SGX Root CA CRL found");
-        }
-    }
+    assert!(
+        verify_crl(&intel_crls.sgx_root_ca_crl, &intel_sgx_root_cert),
+        "Invalid Root CA CRL"
+    );
 
     let signing_cert_revoked = intel_crls.is_cert_revoked(&signing_cert);
     assert!(!signing_cert_revoked, "TCB Signing Cert revoked");
@@ -197,18 +193,13 @@ fn check_pck_issuer_and_crl(
     );
 
     match pck_cert_issuer_cn.as_str() {
-        "Intel SGX PCK Platform CA" => verify_crl(
-            intel_crls.sgx_pck_platform_crl.as_ref().unwrap(),
-            pck_issuer_cert,
-        ),
-        "Intel SGX PCK Processor CA" => verify_crl(
-            &intel_crls.sgx_pck_processor_crl.as_ref().unwrap(),
-            pck_issuer_cert,
-        ),
+        "Intel SGX PCK Platform CA" => assert_eq!(intel_crls.crl_type, CrlType::SgxPckPlatform),
+        "Intel SGX PCK Processor CA" => assert_eq!(intel_crls.crl_type, CrlType::SgxPckProcessor),
         _ => {
             panic!("Unknown PCK Cert Subject CN: {}", pck_cert_subject_cn);
         }
     }
+    verify_crl(&intel_crls.sgx_pck_crl, pck_issuer_cert)
 }
 
 fn validate_qe_report(enclave_report: &EnclaveReport, qeidentityv2: &EnclaveIdentityV2) -> bool {

@@ -12,11 +12,9 @@ pub struct IntelCollateral {
     pub sgx_intel_root_ca_der: Option<Vec<u8>>,
     pub sgx_tcb_signing_der: Option<Vec<u8>>,
     pub sgx_intel_root_ca_crl_der: Option<Vec<u8>>,
-    pub sgx_pck_processor_crl_der: Option<Vec<u8>>,
-    pub sgx_pck_platform_crl_der: Option<Vec<u8>>,
+    pub sgx_pck_crl_der: Option<Vec<u8>>,
 }
 
-// builder pattern for IntelCollateralV3
 impl IntelCollateral {
     pub fn new() -> IntelCollateral {
         IntelCollateral {
@@ -25,8 +23,7 @@ impl IntelCollateral {
             sgx_intel_root_ca_der: None,
             sgx_tcb_signing_der: None,
             sgx_intel_root_ca_crl_der: None,
-            sgx_pck_processor_crl_der: None,
-            sgx_pck_platform_crl_der: None,
+            sgx_pck_crl_der: None,
         }
     }
 
@@ -61,25 +58,19 @@ impl IntelCollateral {
             None => &[],
         };
 
-        let sgx_pck_processor_crl_der_bytes = match &self.sgx_pck_processor_crl_der {
-            Some(der) => der.as_slice(),
-            None => &[],
-        };
-
-        let sgx_pck_platform_crl_der_bytes = match &self.sgx_pck_platform_crl_der {
+        let sgx_pck_crl_der_bytes = match &self.sgx_pck_crl_der {
             Some(der) => der.as_slice(),
             None => &[],
         };
 
         // get the total length
-        let total_length = 4 * 8
+        let total_length = 4 * 6
             + tcbinfo_bytes.len()
             + qeidentity_bytes.len()
             + sgx_intel_root_ca_der_bytes.len()
             + sgx_tcb_signing_der_bytes.len()
             + sgx_intel_root_ca_crl_der_bytes.len()
-            + sgx_pck_processor_crl_der_bytes.len()
-            + sgx_pck_platform_crl_der_bytes.len();
+            + sgx_pck_crl_der_bytes.len();
 
         // create the vec and copy the data
         let mut data = Vec::with_capacity(total_length);
@@ -88,23 +79,21 @@ impl IntelCollateral {
         data.extend_from_slice(&(sgx_intel_root_ca_der_bytes.len() as u32).to_le_bytes());
         data.extend_from_slice(&(sgx_tcb_signing_der_bytes.len() as u32).to_le_bytes());
         data.extend_from_slice(&(sgx_intel_root_ca_crl_der_bytes.len() as u32).to_le_bytes());
-        data.extend_from_slice(&(sgx_pck_processor_crl_der_bytes.len() as u32).to_le_bytes());
-        data.extend_from_slice(&(sgx_pck_platform_crl_der_bytes.len() as u32).to_le_bytes());
+        data.extend_from_slice(&(sgx_pck_crl_der_bytes.len() as u32).to_le_bytes());
 
         data.extend_from_slice(&tcbinfo_bytes);
         data.extend_from_slice(&qeidentity_bytes);
         data.extend_from_slice(&sgx_intel_root_ca_der_bytes);
         data.extend_from_slice(&sgx_tcb_signing_der_bytes);
         data.extend_from_slice(&sgx_intel_root_ca_crl_der_bytes);
-        data.extend_from_slice(&sgx_pck_processor_crl_der_bytes);
-        data.extend_from_slice(&sgx_pck_platform_crl_der_bytes);
+        data.extend_from_slice(&sgx_pck_crl_der_bytes);
 
         data
     }
 
     pub fn from_bytes(slice: &[u8]) -> Self {
         // reverse the serialization process
-        // each length is 4 bytes long, we have a total of 8 members
+        // each length is 4 bytes long, we have a total of 6 members
         let tcbinfo_bytes_len = u32::from_le_bytes(slice[0..4].try_into().unwrap()) as usize;
         let qeidentity_bytes_len = u32::from_le_bytes(slice[4..8].try_into().unwrap()) as usize;
         let sgx_intel_root_ca_der_len =
@@ -113,12 +102,9 @@ impl IntelCollateral {
             u32::from_le_bytes(slice[12..16].try_into().unwrap()) as usize;
         let sgx_intel_root_ca_crl_der_len =
             u32::from_le_bytes(slice[16..20].try_into().unwrap()) as usize;
-        let sgx_pck_processor_crl_der_len =
-            u32::from_le_bytes(slice[20..24].try_into().unwrap()) as usize;
-        let sgx_pck_platform_crl_der_len =
-            u32::from_le_bytes(slice[24..28].try_into().unwrap()) as usize;
+        let sgx_pck_crl_der_len = u32::from_le_bytes(slice[20..24].try_into().unwrap()) as usize;
 
-        let mut offset = 4 * 8 as usize;
+        let mut offset = 4 * 6 as usize;
         let tcbinfo_bytes: Option<Vec<u8>> = match tcbinfo_bytes_len {
             0 => None,
             len => Some(slice[offset..offset + len].to_vec()),
@@ -149,17 +135,11 @@ impl IntelCollateral {
         };
         offset += sgx_intel_root_ca_crl_der_len;
 
-        let sgx_pck_processor_crl_der: Option<Vec<u8>> = match sgx_pck_processor_crl_der_len {
+        let sgx_pck_crl_der: Option<Vec<u8>> = match sgx_pck_crl_der_len {
             0 => None,
             len => Some(slice[offset..offset + len].to_vec()),
         };
-        offset += sgx_pck_processor_crl_der_len;
-
-        let sgx_pck_platform_crl_der: Option<Vec<u8>> = match sgx_pck_platform_crl_der_len {
-            0 => None,
-            len => Some(slice[offset..offset + len].to_vec()),
-        };
-        offset += sgx_pck_platform_crl_der_len;
+        offset += sgx_pck_crl_der_len;
 
         assert!(offset == slice.len());
 
@@ -169,8 +149,7 @@ impl IntelCollateral {
             sgx_intel_root_ca_der,
             sgx_tcb_signing_der,
             sgx_intel_root_ca_crl_der,
-            sgx_pck_processor_crl_der,
-            sgx_pck_platform_crl_der,
+            sgx_pck_crl_der,
         }
     }
 
@@ -243,9 +222,7 @@ impl IntelCollateral {
     }
 
     pub fn set_sgx_tcb_signing_pem(&mut self, sgx_tcb_signing_pem: &[u8]) {
-        // convert pem to der
-        let sgx_tcb_signing_der = pem_to_der(sgx_tcb_signing_pem);
-        self.sgx_tcb_signing_der = Some(sgx_tcb_signing_der);
+        self.set_sgx_tcb_signing_der(pem_to_der(sgx_tcb_signing_pem).as_ref());
     }
 
     pub fn get_sgx_intel_root_ca_crl<'a>(&'a self) -> Option<CertificateRevocationList<'a>> {
@@ -263,48 +240,20 @@ impl IntelCollateral {
     }
 
     pub fn set_sgx_intel_root_ca_crl_pem(&mut self, sgx_intel_root_ca_crl_pem: &[u8]) {
-        // convert pem to der
-        let sgx_intel_root_ca_crl_der = pem_to_der(sgx_intel_root_ca_crl_pem);
-        self.sgx_intel_root_ca_crl_der = Some(sgx_intel_root_ca_crl_der);
+        self.set_sgx_intel_root_ca_crl_der(pem_to_der(sgx_intel_root_ca_crl_pem).as_ref());
     }
 
-    pub fn get_sgx_pck_processor_crl<'a>(&'a self) -> Option<CertificateRevocationList<'a>> {
-        match &self.sgx_pck_processor_crl_der {
+    pub fn set_sgx_pck_crl_der(&mut self, sgx_pck_crl_der: &[u8]) {
+        self.sgx_pck_crl_der = Some(sgx_pck_crl_der.to_vec());
+    }
+
+    pub fn get_sgx_pck_crl<'a>(&'a self) -> Option<CertificateRevocationList<'a>> {
+        match &self.sgx_pck_crl_der {
             Some(crl_der) => {
                 let crl = parse_crl_der(crl_der);
                 Some(crl)
             }
             None => None,
         }
-    }
-
-    pub fn set_sgx_processor_crl_der(&mut self, sgx_pck_processor_crl_der: &[u8]) {
-        self.sgx_pck_processor_crl_der = Some(sgx_pck_processor_crl_der.to_vec());
-    }
-
-    pub fn set_sgx_processor_crl_der_pem(&mut self, sgx_pck_processor_crl_pem: &[u8]) {
-        // convert pem to der
-        let sgx_pck_processor_crl_der = pem_to_der(sgx_pck_processor_crl_pem);
-        self.sgx_pck_processor_crl_der = Some(sgx_pck_processor_crl_der);
-    }
-
-    pub fn get_sgx_pck_platform_crl<'a>(&'a self) -> Option<CertificateRevocationList<'a>> {
-        match &self.sgx_pck_platform_crl_der {
-            Some(crl_der) => {
-                let crl = parse_crl_der(crl_der);
-                Some(crl)
-            }
-            None => None,
-        }
-    }
-
-    pub fn set_sgx_platform_crl_der(&mut self, sgx_pck_platform_crl_der: &[u8]) {
-        self.sgx_pck_platform_crl_der = Some(sgx_pck_platform_crl_der.to_vec());
-    }
-
-    pub fn set_sgx_platform_crl_der_pem(&mut self, sgx_pck_platform_crl_pem: &[u8]) {
-        // convert pem to der
-        let sgx_pck_platform_crl_der = pem_to_der(sgx_pck_platform_crl_pem);
-        self.sgx_pck_platform_crl_der = Some(sgx_pck_platform_crl_der);
     }
 }

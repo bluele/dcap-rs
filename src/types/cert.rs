@@ -48,38 +48,52 @@ pub struct PckPlatformConfiguration {
 
 #[derive(Debug)]
 pub struct IntelSgxCrls<'a> {
-    pub sgx_root_ca_crl: Option<CertificateRevocationList<'a>>,
-    pub sgx_pck_processor_crl: Option<CertificateRevocationList<'a>>,
-    pub sgx_pck_platform_crl: Option<CertificateRevocationList<'a>>,
+    pub sgx_root_ca_crl: CertificateRevocationList<'a>,
+    pub sgx_pck_crl: CertificateRevocationList<'a>,
+    pub crl_type: CrlType,
 }
 
 impl<'a> IntelSgxCrls<'a> {
     pub fn new(
-        sgx_root_ca_crl: Option<CertificateRevocationList<'a>>,
-        sgx_pck_processor_crl: Option<CertificateRevocationList<'a>>,
-        sgx_pck_platform_crl: Option<CertificateRevocationList<'a>>,
+        sgx_root_ca_crl: CertificateRevocationList<'a>,
+        sgx_pck_crl: CertificateRevocationList<'a>,
     ) -> Self {
+        let crl_type = match sgx_pck_crl
+            .issuer()
+            .iter_common_name()
+            .next()
+            .unwrap()
+            .as_str()
+            .unwrap()
+        {
+            "Intel SGX PCK Processor CA" => CrlType::SgxPckProcessor,
+            "Intel SGX PCK Platform CA" => CrlType::SgxPckPlatform,
+            s => panic!("Unknown CRL issuer: {}", s),
+        };
         Self {
             sgx_root_ca_crl,
-            sgx_pck_processor_crl,
-            sgx_pck_platform_crl,
+            sgx_pck_crl,
+            crl_type,
         }
     }
 
     pub fn from_collaterals(collaterals: &'a IntelCollateral) -> Self {
         let sgx_root_ca_crl = collaterals.get_sgx_intel_root_ca_crl();
-        let sgx_pck_processor_crl = collaterals.get_sgx_pck_processor_crl();
-        let sgx_pck_platform_crl: Option<CertificateRevocationList<'_>> =
-            collaterals.get_sgx_pck_platform_crl();
-
-        Self::new(sgx_root_ca_crl, sgx_pck_processor_crl, sgx_pck_platform_crl)
+        let sgx_pck_crl = collaterals.get_sgx_pck_crl();
+        Self::new(sgx_root_ca_crl.unwrap(), sgx_pck_crl.unwrap())
     }
 
     pub fn is_cert_revoked(&self, cert: &X509Certificate) -> bool {
         let crl = match get_crl_type(cert) {
-            Some(CrlType::SgxRootCa) => self.sgx_root_ca_crl.as_ref().unwrap(),
-            Some(CrlType::SgxPckProcessor) => self.sgx_pck_processor_crl.as_ref().unwrap(),
-            Some(CrlType::SgxPckPlatform) => self.sgx_pck_platform_crl.as_ref().unwrap(),
+            Some(CrlType::SgxRootCa) => &self.sgx_root_ca_crl,
+            Some(CrlType::SgxPckProcessor) => {
+                assert_eq!(self.crl_type, CrlType::SgxPckProcessor);
+                &self.sgx_pck_crl
+            }
+            Some(CrlType::SgxPckPlatform) => {
+                assert_eq!(self.crl_type, CrlType::SgxPckPlatform);
+                &self.sgx_pck_crl
+            }
             None => panic!("Unknown CRL URI"),
         };
         // check if the cert is revoked given the crl
@@ -89,20 +103,14 @@ impl<'a> IntelSgxCrls<'a> {
     pub fn validity_intersection(&self) -> ValidityIntersection {
         let mut max_last_update = i64::MIN;
         let mut min_next_update = i64::MAX;
-        for crl in [
-            self.sgx_root_ca_crl.as_ref(),
-            self.sgx_pck_processor_crl.as_ref(),
-            self.sgx_pck_platform_crl.as_ref(),
-        ] {
-            if let Some(crl) = crl {
-                let last_update = crl.last_update().timestamp();
-                if last_update > max_last_update {
-                    max_last_update = last_update;
-                }
-                if let Some(next_update) = crl.next_update().map(|t| t.timestamp()) {
-                    if next_update < min_next_update {
-                        min_next_update = next_update;
-                    }
+        for crl in [&self.sgx_root_ca_crl, &self.sgx_pck_crl] {
+            let last_update = crl.last_update().timestamp();
+            if last_update > max_last_update {
+                max_last_update = last_update;
+            }
+            if let Some(next_update) = crl.next_update().map(|t| t.timestamp()) {
+                if next_update < min_next_update {
+                    min_next_update = next_update;
                 }
             }
         }
@@ -113,6 +121,7 @@ impl<'a> IntelSgxCrls<'a> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum CrlType {
     SgxRootCa,
     SgxPckProcessor,
