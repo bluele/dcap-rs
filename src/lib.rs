@@ -8,12 +8,12 @@ use x509_parser::certificate::X509Certificate;
 mod tests {
     use crate::types::collaterals::IntelCollateral;
     use crate::types::quotes::{version_3::QuoteV3, version_4::QuoteV4};
-    use crate::types::tcbinfo::{TcbInfoV2, TcbInfoV3};
+    use crate::types::tcbinfo::TcbInfoV3;
     use crate::types::{TcbStatus, VerifiedOutput};
     use crate::utils::cert::{parse_crl_der, parse_pem, parse_x509_der, pem_to_der, verify_crl};
     use crate::utils::hash::sha256sum;
     use crate::utils::quotes::{version_3::verify_quote_dcapv3, version_4::verify_quote_dcapv4};
-    use crate::utils::tcbinfo::{validate_tcbinfov2, validate_tcbinfov3};
+    use crate::utils::tcbinfo::validate_tcbinfov3;
 
     // Pinned September 10th, 2024, 6:49am GMT
     // there's no need for constant sample collateral updates
@@ -41,24 +41,6 @@ mod tests {
         let sgx_signing_cert = parse_x509_der(&sgx_signing_cert_pem.contents);
 
         assert!(validate_tcbinfov3(&tcbinfov3, &sgx_signing_cert, PINNED_TIME).is_some());
-    }
-
-    #[test]
-    fn test_tcbinfov2() {
-        let tcbinfov2_json = include_str!("../data/tcbinfov2.json");
-        let tcbinfov2: TcbInfoV2 = serde_json::from_str(tcbinfov2_json).unwrap();
-        let tcbinfov2_serialize = serde_json::to_string(&tcbinfov2).unwrap();
-        assert!(tcbinfov2_serialize == tcbinfov2_json);
-
-        let sgx_signing_cert_pem =
-            &parse_pem(include_bytes!("../data/signing_cert.pem")).unwrap()[0];
-        let sgx_signing_cert = parse_x509_der(&sgx_signing_cert_pem.contents);
-
-        assert!(validate_tcbinfov2(
-            &tcbinfov2,
-            &sgx_signing_cert,
-            PINNED_TIME
-        ));
     }
 
     #[test]

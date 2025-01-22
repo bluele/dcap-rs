@@ -2,11 +2,7 @@ use crate::constants::SGX_TEE_TYPE;
 use crate::types::quotes::body::QuoteBody;
 use crate::types::quotes::{version_4::QuoteV4, CertDataType};
 use crate::types::TcbStatus;
-use crate::types::{
-    collaterals::IntelCollateral,
-    tcbinfo::{TcbInfo, TcbInfoV3},
-    VerifiedOutput,
-};
+use crate::types::{collaterals::IntelCollateral, tcbinfo::TcbInfo, VerifiedOutput};
 use crate::utils::cert::get_sgx_tdx_fmspc_tcbstatus_v3;
 use crate::utils::hash::sha256sum;
 use crate::utils::tdx_module::{
@@ -48,12 +44,7 @@ pub fn verify_quote_dcapv4(
             current_time,
         );
 
-    let tcb_info_v3: TcbInfoV3;
-    if let TcbInfo::V3(tcb) = tcb_info {
-        tcb_info_v3 = tcb;
-    } else {
-        panic!("TcbInfo must be V3!");
-    }
+    let TcbInfo::V3(tcb_info_v3) = tcb_info;
 
     let (quote_tdx_body, tee_tcb_svn) = if let QuoteBody::TD10QuoteBody(body) = &quote.quote_body {
         (Some(body), body.tee_tcb_svn)

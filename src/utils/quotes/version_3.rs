@@ -1,9 +1,5 @@
 use crate::types::quotes::{body::QuoteBody, version_3::QuoteV3};
-use crate::types::{
-    collaterals::IntelCollateral,
-    tcbinfo::{TcbInfo, TcbInfoV3},
-    TcbStatus, VerifiedOutput,
-};
+use crate::types::{collaterals::IntelCollateral, tcbinfo::TcbInfo, TcbStatus, VerifiedOutput};
 use crate::utils::cert::get_sgx_tdx_fmspc_tcbstatus_v3;
 use crate::utils::hash::sha256sum;
 
@@ -31,12 +27,7 @@ pub fn verify_quote_dcapv3(
             current_time,
         );
 
-    let tcb_info_v3: TcbInfoV3;
-    if let TcbInfo::V3(tcb) = tcb_info {
-        tcb_info_v3 = tcb;
-    } else {
-        panic!("TcbInfo must be V3!");
-    }
+    let TcbInfo::V3(tcb_info_v3) = tcb_info;
     let (mut tcb_status, _, advisory_ids) = get_sgx_tdx_fmspc_tcbstatus_v3(
         quote.header.tee_type,
         &sgx_extensions,
