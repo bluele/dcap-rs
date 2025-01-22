@@ -1,9 +1,7 @@
+use super::ValidityIntersection;
+use crate::utils::cert::{get_crl_uri, is_cert_revoked, parse_x509_der_multi, pem_to_der};
 use serde::{Deserialize, Serialize};
 use x509_parser::{certificate::X509Certificate, revocation_list::CertificateRevocationList};
-
-use crate::utils::cert::{get_crl_uri, is_cert_revoked, parse_x509_der_multi, pem_to_der};
-
-use super::{collaterals::IntelCollateral, ValidityIntersection};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,12 +73,6 @@ impl<'a> IntelSgxCrls<'a> {
             sgx_pck_crl,
             crl_type,
         }
-    }
-
-    pub fn from_collaterals(collaterals: &'a IntelCollateral) -> Self {
-        let sgx_root_ca_crl = collaterals.get_sgx_intel_root_ca_crl();
-        let sgx_pck_crl = collaterals.get_sgx_pck_crl();
-        Self::new(sgx_root_ca_crl.unwrap(), sgx_pck_crl.unwrap())
     }
 
     pub fn is_cert_revoked(&self, cert: &X509Certificate) -> bool {

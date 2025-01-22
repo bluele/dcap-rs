@@ -63,7 +63,10 @@ fn common_verify_and_fetch_tcb(
         .with_certificate(&intel_sgx_root_cert.validity);
 
     // verify that signing_verifying_key is not revoked and signed by the root cert
-    let intel_crls = IntelSgxCrls::from_collaterals(collaterals);
+    let intel_crls = IntelSgxCrls::new(
+        collaterals.get_sgx_intel_root_ca_crl(),
+        collaterals.get_sgx_pck_crl(),
+    );
     let validity_intersection =
         validity_intersection.with_other(intel_crls.validity_intersection());
 

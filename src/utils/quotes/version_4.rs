@@ -114,7 +114,7 @@ pub fn verify_quote_dcapv4(
         tee_type: quote.header.tee_type,
         tcb_status,
         fmspc: sgx_extensions.fmspc,
-        sgx_intel_root_ca_hash: sha256sum(collaterals.sgx_intel_root_ca_der.as_ref().unwrap()),
+        sgx_intel_root_ca_hash: sha256sum(collaterals.sgx_intel_root_ca_der.as_ref()),
         validity_intersection,
         quote_body: quote.quote_body,
         advisory_ids,
