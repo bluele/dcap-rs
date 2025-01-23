@@ -11,7 +11,7 @@ mod tests {
     use crate::types::tcbinfo::TcbInfoV3;
     use crate::types::{TcbStatus, VerifiedOutput};
     use crate::utils::cert::{parse_crl_der, parse_pem, parse_x509_der, pem_to_der, verify_crl};
-    use crate::utils::hash::sha256sum;
+    use crate::utils::hash::keccak256sum;
     use crate::utils::quotes::{version_3::verify_quote_dcapv3, version_4::verify_quote_dcapv4};
     use crate::utils::tcbinfo::validate_tcbinfov3;
 
@@ -73,7 +73,7 @@ mod tests {
         assert_eq!(verified_output.fmspc, [0x00, 0x90, 0x6E, 0xD5, 0x00, 0x00]);
         assert_eq!(
             verified_output.sgx_intel_root_ca_hash,
-            sha256sum(collaterals.sgx_intel_root_ca_der.as_ref())
+            keccak256sum(collaterals.sgx_intel_root_ca_der.as_ref())
         );
         assert_eq!(
             verified_output.advisory_ids.clone().unwrap(),

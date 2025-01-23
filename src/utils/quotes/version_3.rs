@@ -1,7 +1,7 @@
 use crate::types::quotes::{body::QuoteBody, version_3::QuoteV3};
 use crate::types::{collaterals::IntelCollateral, tcbinfo::TcbInfo, TcbStatus, VerifiedOutput};
 use crate::utils::cert::get_sgx_tdx_fmspc_tcbstatus_v3;
-use crate::utils::hash::sha256sum;
+use crate::utils::hash::keccak256sum;
 
 use super::{check_quote_header, common_verify_and_fetch_tcb, converge_tcb_status_with_qe_tcb};
 
@@ -48,7 +48,7 @@ pub fn verify_quote_dcapv3(
         tee_type: quote.header.tee_type,
         tcb_status,
         fmspc: sgx_extensions.fmspc,
-        sgx_intel_root_ca_hash: sha256sum(collaterals.sgx_intel_root_ca_der.as_ref()),
+        sgx_intel_root_ca_hash: keccak256sum(collaterals.sgx_intel_root_ca_der.as_ref()),
         validity_intersection,
         quote_body,
         advisory_ids,
