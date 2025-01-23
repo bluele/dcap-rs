@@ -1,6 +1,12 @@
+use anyhow::bail;
+
+use crate::Result;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum QuoteBody {
+    /// QE3
     SGXQuoteBody(EnclaveReport),
+    /// QE4
     TD10QuoteBody(TD10ReportBody),
 }
 
@@ -51,8 +57,10 @@ pub struct EnclaveReport {
 }
 
 impl EnclaveReport {
-    pub fn from_bytes(raw_bytes: &[u8]) -> EnclaveReport {
-        assert_eq!(raw_bytes.len(), 384);
+    pub fn from_bytes(raw_bytes: &[u8]) -> Result<EnclaveReport> {
+        if raw_bytes.len() != 384 {
+            bail!("Invalid length of bytes for EnclaveReport");
+        }
         let mut obj = EnclaveReport {
             cpu_svn: [0; 16],
             misc_select: [0; 4],
@@ -82,7 +90,7 @@ impl EnclaveReport {
         obj.reserved_4.copy_from_slice(&raw_bytes[260..320]);
         obj.report_data.copy_from_slice(&raw_bytes[320..384]);
 
-        return obj;
+        Ok(obj)
     }
 
     pub fn to_bytes(&self) -> [u8; 384] {
@@ -181,7 +189,11 @@ pub struct TD10ReportBody {
 }
 
 impl TD10ReportBody {
-    pub fn from_bytes(raw_bytes: &[u8]) -> Self {
+    pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
+        if raw_bytes.len() != 584 {
+            bail!("Invalid length of bytes for TD10ReportBody");
+        }
+
         // copy the bytes into the struct
         let mut tee_tcb_svn = [0; 16];
         tee_tcb_svn.copy_from_slice(&raw_bytes[0..16]);
@@ -238,7 +250,7 @@ impl TD10ReportBody {
         let mut report_data = [0; 64];
         report_data.copy_from_slice(&raw_bytes[520..584]);
 
-        TD10ReportBody {
+        Ok(TD10ReportBody {
             tee_tcb_svn,
             mrseam,
             mrsignerseam,
@@ -254,7 +266,7 @@ impl TD10ReportBody {
             rtmr2,
             rtmr3,
             report_data,
-        }
+        })
     }
 
     pub fn to_bytes(&self) -> [u8; 584] {

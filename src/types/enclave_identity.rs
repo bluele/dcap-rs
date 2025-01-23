@@ -130,7 +130,6 @@ use serde::{Deserialize, Serialize};
 //             type: string
 //             description: Hex-encoded string representation of a signature calculated
 //                 over qeIdentity body (without whitespaces) using TCB Info Signing Key.
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnclaveIdentityV2 {

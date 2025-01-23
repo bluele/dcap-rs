@@ -1,3 +1,4 @@
+use anyhow::bail;
 use x509_parser::oid_registry::asn1_rs::{
     oid, Boolean, Enumerated, FromDer, Integer, OctetString, Oid, Sequence,
 };
@@ -7,29 +8,12 @@ use x509_parser::prelude::*;
 use crate::constants::{SGX_TEE_TYPE, TDX_TEE_TYPE};
 use crate::types::cert::{PckPlatformConfiguration, SgxExtensionTcbLevel, SgxExtensions};
 use crate::types::tcbinfo::{TcbComponent, TcbInfoV3};
-use crate::types::TcbStatus;
+use crate::types::TcbInfoV3TcbStatus;
 use crate::utils::crypto::verify_p256_signature_der;
-use crate::utils::hash::{keccak256sum, sha256sum};
 
-pub fn hash_x509_keccak256(cert: &X509Certificate) -> [u8; 32] {
-    keccak256sum(cert.tbs_certificate.as_ref())
-}
-
-pub fn hash_x509_sha256(cert: &X509Certificate) -> [u8; 32] {
-    sha256sum(cert.tbs_certificate.as_ref())
-}
-
-pub fn hash_crl_keccak256(cert: &CertificateRevocationList) -> [u8; 32] {
-    keccak256sum(cert.tbs_cert_list.as_ref())
-}
-
-pub fn hash_crl_sha256(cert: &CertificateRevocationList) -> [u8; 32] {
-    sha256sum(cert.tbs_cert_list.as_ref())
-}
-
-pub fn pem_to_der(pem_bytes: &[u8]) -> Vec<u8> {
+pub fn pem_to_der(pem_bytes: &[u8]) -> Result<Vec<u8>, PEMError> {
     // convert from raw pem bytes to pem objects
-    let pems = parse_pem(pem_bytes).unwrap();
+    let pems = parse_pem(pem_bytes)?;
     // convert from pem objects to der bytes
     // to make it more optimize, we'll read get all the lengths of the der bytes
     // and then allocate the buffer once
@@ -38,147 +22,85 @@ pub fn pem_to_der(pem_bytes: &[u8]) -> Vec<u8> {
     for pem in pems {
         der_bytes.extend_from_slice(&pem.contents);
     }
-    der_bytes
+    Ok(der_bytes)
 }
 
 pub fn parse_pem(raw_bytes: &[u8]) -> Result<Vec<Pem>, PEMError> {
     Pem::iter_from_buffer(raw_bytes).collect()
 }
 
-pub fn parse_crl_der<'a>(raw_bytes: &'a [u8]) -> CertificateRevocationList<'a> {
-    let (_, crl) = CertificateRevocationList::from_der(raw_bytes).unwrap();
-    crl
+pub fn parse_crl_der<'a>(raw_bytes: &'a [u8]) -> crate::Result<CertificateRevocationList<'a>> {
+    let (_, crl) = CertificateRevocationList::from_der(raw_bytes)?;
+    Ok(crl)
 }
 
-pub fn parse_x509_der<'a>(raw_bytes: &'a [u8]) -> X509Certificate<'a> {
-    let (_, cert) = X509Certificate::from_der(raw_bytes).unwrap();
-    cert
+pub fn parse_x509_der<'a>(raw_bytes: &'a [u8]) -> crate::Result<X509Certificate<'a>> {
+    let (_, cert) = X509Certificate::from_der(raw_bytes)?;
+    Ok(cert)
 }
 
-pub fn parse_x509_der_multi<'a>(raw_bytes: &'a [u8]) -> Vec<X509Certificate<'a>> {
+pub fn parse_x509_der_multi<'a>(raw_bytes: &'a [u8]) -> crate::Result<Vec<X509Certificate<'a>>> {
     let mut certs = Vec::new();
     let mut i = raw_bytes;
     while i.len() > 0 {
-        let (j, cert) = X509Certificate::from_der(i).unwrap();
+        let (j, cert) = X509Certificate::from_der(i)?;
         certs.push(cert);
         i = j;
     }
-    certs
+    Ok(certs)
 }
 
-pub fn parse_certchain<'a>(pem_certs: &'a [Pem]) -> Vec<X509Certificate<'a>> {
-    pem_certs
+pub fn parse_certchain<'a>(pem_certs: &'a [Pem]) -> crate::Result<Vec<X509Certificate<'a>>> {
+    Ok(pem_certs
         .iter()
-        .map(|pem| pem.parse_x509().unwrap())
-        .collect()
+        .map(|pem| pem.parse_x509())
+        .collect::<Result<_, _>>()?)
 }
 
-pub fn check_certificate<'a, 'b, 'c>(
-    cert: &X509Certificate<'a>,
-    issuer: &X509Certificate<'b>,
-    crl: &CertificateRevocationList<'c>,
-    subject_name: &str,
-    current_time: u64,
-) -> bool {
-    let is_cert_valid = validate_certificate(
-        cert,
-        crl,
-        subject_name,
-        issuer.subject().to_string().as_str(),
-        current_time,
-    );
-    let is_cert_verified = verify_certificate(cert, issuer);
-    is_cert_valid && is_cert_verified
-}
-
-pub fn verify_certificate(cert: &X509Certificate, signer_cert: &X509Certificate) -> bool {
-    // verifies that the certificate is valid
+/// Verifies the signature of a certificate using the public key of the signer certificate.
+pub fn verify_certificate(
+    cert: &X509Certificate,
+    signer_cert: &X509Certificate,
+) -> crate::Result<()> {
     let data = cert.tbs_certificate.as_ref();
     let signature = cert.signature_value.as_ref();
     let public_key = signer_cert.public_key().subject_public_key.as_ref();
-    // make sure that the issuer is the signer
     if cert.issuer() != signer_cert.subject() {
-        return false;
+        bail!("Issuer does not match signer");
     }
     verify_p256_signature_der(data, signature, public_key)
 }
 
-pub fn verify_crl(crl: &CertificateRevocationList, signer_cert: &X509Certificate) -> bool {
+/// Verifies the signature of a CRL using the public key of the signer certificate.
+pub fn verify_crl_signature(
+    crl: &CertificateRevocationList,
+    signer_cert: &X509Certificate,
+) -> crate::Result<()> {
     // verifies that the crl is valid
     let data = crl.tbs_cert_list.as_ref();
     let signature = crl.signature_value.as_ref();
     let public_key = signer_cert.public_key().subject_public_key.as_ref();
-    // make sure that the issuer is the signer
     if crl.issuer() != signer_cert.subject() {
-        return false;
+        bail!("Issuer does not match signer");
     }
     verify_p256_signature_der(data, signature, public_key)
 }
 
-pub fn validate_certificate(
-    _cert: &X509Certificate,
-    crl: &CertificateRevocationList,
-    subject_name: &str,
-    issuer_name: &str,
-    current_time: u64,
-) -> bool {
-    // check that the certificate is a valid cert.
-    // i.e., make sure that the cert name is correct, issued by intel,
-    // has not been revoked, etc.
-    // for now, we'll just return true
-
-    // check if certificate is expired
-    let issue_date = _cert.validity().not_before.timestamp() as u64;
-    let expiry_date = _cert.validity().not_after.timestamp() as u64;
-
-    if (current_time < issue_date) || (current_time > expiry_date) {
-        return false;
-    }
-
-    // check that the certificate is issued to the correct subject
-    if _cert.subject().to_string().as_str() != subject_name {
-        return false;
-    }
-
-    // check if certificate is issued by the correct issuer
-    if _cert.issuer().to_string().as_str() != issuer_name {
-        return false;
-    }
-
-    // check if certificate has been revoked
-    let is_revoked = crl.iter_revoked_certificates().any(|entry| {
-        (entry.revocation_date.timestamp() as u64) < current_time
-            && entry.user_certificate == _cert.tbs_certificate.serial
-    });
-
-    !is_revoked
-}
-
-// we'll just verify that the certchain signature matches, any other checks will be done by the caller
+// verify_certchain_signature just verify that the certchain signature matches, any other checks will be done by the caller
 pub fn verify_certchain_signature<'a, 'b>(
-    certs: &[X509Certificate<'a>],
+    certs: &[&X509Certificate<'a>],
     root_cert: &X509Certificate<'b>,
-) -> bool {
+) -> crate::Result<()> {
     // verify that the cert chain is valid
     let mut iter = certs.iter();
     let mut prev_cert = iter.next().unwrap();
     for cert in iter {
         // verify that the previous cert signed the current cert
-        if !verify_certificate(prev_cert, cert) {
-            return false;
-        }
+        verify_certificate(prev_cert, cert)?;
         prev_cert = cert;
     }
     // verify that the root cert signed the last cert
     verify_certificate(prev_cert, root_cert)
-}
-
-pub fn is_cert_revoked<'a, 'b>(
-    cert: &X509Certificate<'a>,
-    crl: &CertificateRevocationList<'b>,
-) -> bool {
-    crl.iter_revoked_certificates()
-        .any(|entry| entry.user_certificate == cert.tbs_certificate.serial)
 }
 
 pub fn get_x509_subject_cn(cert: &X509Certificate) -> String {
@@ -218,15 +140,6 @@ pub fn get_crl_uri(cert: &X509Certificate) -> Option<String> {
     crl_uri
 }
 
-pub fn get_asn1_bool<'a>(bytes: &'a [u8], oid_str: &str) -> (&'a [u8], bool) {
-    let (k, asn1_seq) = Sequence::from_der(bytes).unwrap();
-    let (l, asn1_oid) = Oid::from_der(asn1_seq.content.as_ref()).unwrap();
-    assert!(oid_str.eq(&asn1_oid.to_id_string()));
-    let (l, asn1_bool) = Boolean::from_der(l).unwrap();
-    assert_eq!(l.len(), 0);
-    (k, asn1_bool.bool())
-}
-
 pub fn get_asn1_uint64<'a>(bytes: &'a [u8], oid_str: &str) -> (&'a [u8], u64) {
     let (k, asn1_seq) = Sequence::from_der(bytes).unwrap();
     let (l, asn1_oid) = Oid::from_der(asn1_seq.content.as_ref()).unwrap();
@@ -245,7 +158,7 @@ pub fn get_asn1_bytes<'a>(bytes: &'a [u8], oid_str: &str) -> (&'a [u8], Vec<u8>)
     (k, asn1_bytes.into_cow().to_vec())
 }
 
-pub fn extract_sgx_extension<'a>(cert: &'a X509Certificate<'a>) -> SgxExtensions {
+pub fn extract_sgx_extensions<'a>(cert: &'a X509Certificate<'a>) -> SgxExtensions {
     // https://download.01.org/intel-sgx/sgx-dcap/1.20/linux/docs/SGX_PCK_Certificate_CRL_Spec-1.4.pdf
 
     // <SGX Extensions OID>:
@@ -456,67 +369,81 @@ pub fn extract_sgx_extension<'a>(cert: &'a X509Certificate<'a>) -> SgxExtensions
     }
 }
 
-// Slightly modified from https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TcbLevelCheck.cpp#L129-L181
+/// https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/Checks/TcbLevelCheck.cpp#L129-L181
 pub fn get_sgx_tdx_fmspc_tcbstatus_v3(
     tee_type: u32,
+    tee_tcb_svn: Option<[u8; 16]>,
+    // SGX Extensions from the PCK Certificate
     sgx_extensions: &SgxExtensions,
-    tee_tcb_svn: &[u8; 16],
     tcbinfov3: &TcbInfoV3,
-) -> (TcbStatus, TcbStatus, Option<Vec<String>>) {
-    // we'll make sure the tcbinforoot is valid
-    // check that fmspc is valid
-    // check that pceid is valid
+) -> crate::Result<(TcbInfoV3TcbStatus, Option<TcbInfoV3TcbStatus>, Vec<String>)> {
+    let is_tdx = tee_type == TDX_TEE_TYPE && tcbinfov3.tcb_info.id == "TDX";
+    if !is_tdx {
+        // check if tee_type and tcb_info.id are consistent
+        assert!(tee_type == SGX_TEE_TYPE && tcbinfov3.tcb_info.id == "SGX");
+    }
 
-    // convert tcbinfo fmspc and pceid from string to bytes for comparison
-    assert!(sgx_extensions.fmspc.to_vec() == hex::decode(&tcbinfov3.tcb_info.fmspc).unwrap());
-    assert!(sgx_extensions.pceid.to_vec() == hex::decode(&tcbinfov3.tcb_info.pce_id).unwrap());
+    let is_tdx = if tee_type == SGX_TEE_TYPE {
+        false
+    } else if tee_type == TDX_TEE_TYPE {
+        if tee_tcb_svn.is_none() {
+            bail!("TDX TCB SVN is missing");
+        }
+        true
+    } else {
+        bail!("Unsupported TEE type: {}", tee_type);
+    };
 
-    let mut sgx_tcb_status = TcbStatus::TcbUnrecognized;
-    let mut tdx_tcb_status = TcbStatus::TcbUnrecognized;
+    // ref. https://github.com/intel/SGX-TDX-DCAP-QuoteVerificationLibrary/blob/7e5b2a13ca5472de8d97dd7d7024c2ea5af9a6ba/Src/AttestationLibrary/src/Verifiers/QuoteVerifier.cpp#L117
+    if sgx_extensions.fmspc.as_slice() != hex::decode(&tcbinfov3.tcb_info.fmspc)? {
+        bail!("FMSpc does not match");
+    } else if sgx_extensions.pceid.as_slice() != hex::decode(&tcbinfov3.tcb_info.pce_id)? {
+        bail!("PCEID does not match");
+    }
 
-    let extension_pcesvn = sgx_extensions.tcb.pcesvn;
-    let mut advisory_ids = None;
+    let mut sgx_tcb_status: Option<TcbInfoV3TcbStatus> = None;
+    let tcb = &sgx_extensions.tcb;
+    let extension_pcesvn = tcb.pcesvn;
 
     for tcb_level in tcbinfov3.tcb_info.tcb_levels.iter() {
-        if sgx_tcb_status == TcbStatus::TcbUnrecognized {
-            let sgxtcbcomponents_ok =
-                match_sgxtcbcomp(sgx_extensions, &tcb_level.tcb.sgxtcbcomponents);
-            let pcesvn_ok = extension_pcesvn >= tcb_level.tcb.pcesvn;
-            if sgxtcbcomponents_ok && pcesvn_ok {
-                sgx_tcb_status = TcbStatus::from_str(tcb_level.tcb_status.as_str());
-                if tee_type == SGX_TEE_TYPE {
-                    advisory_ids = tcb_level.advisory_ids.clone();
+        if sgx_tcb_status.is_none() {
+            if match_sgxtcbcomp(tcb, &tcb_level.tcb.sgxtcbcomponents)
+                && extension_pcesvn >= tcb_level.tcb.pcesvn
+            {
+                sgx_tcb_status = Some(TcbInfoV3TcbStatus::from_str(tcb_level.tcb_status.as_str())?);
+                if !is_tdx {
+                    return Ok((
+                        sgx_tcb_status.unwrap(),
+                        None,
+                        tcb_level.advisory_ids.clone().unwrap_or_default(),
+                    ));
                 }
             }
         }
-        if sgx_tcb_status != TcbStatus::TcbUnrecognized || sgx_tcb_status != TcbStatus::TcbRevoked {
-            if !is_empty(tee_tcb_svn) {
-                let tdxtcbcomponents_ok = match tcb_level.tcb.tdxtcbcomponents.as_ref() {
-                    Some(tdxtcbcomponents) => tdxtcbcomponents
-                        .iter()
-                        .zip(tee_tcb_svn.iter())
-                        .all(|(tcb, tee)| *tee >= tcb.svn as u8),
-                    None => true,
-                };
-                if tdxtcbcomponents_ok {
-                    tdx_tcb_status = TcbStatus::from_str(tcb_level.tcb_status.as_str());
-                    if tee_type == TDX_TEE_TYPE {
-                        advisory_ids = tcb_level.advisory_ids.clone();
-                    }
-                    break;
-                }
+        if is_tdx && sgx_tcb_status.is_some() {
+            let tdxtcbcomponents = match &tcb_level.tcb.tdxtcbcomponents {
+                Some(cmps) => cmps,
+                None => bail!("TDX TCB Components are missing"),
+            };
+            let ok = match_tdxtcbcomp(&tee_tcb_svn.unwrap(), tdxtcbcomponents);
+            if ok {
+                return Ok((
+                    sgx_tcb_status.unwrap(),
+                    Some(TcbInfoV3TcbStatus::from_str(tcb_level.tcb_status.as_str())?),
+                    tcb_level.advisory_ids.clone().unwrap_or_default(),
+                ));
             }
         }
     }
-    (sgx_tcb_status, tdx_tcb_status, advisory_ids)
+    if let Some(status) = sgx_tcb_status {
+        Ok((status, None, vec![]))
+    } else {
+        bail!("SGX TCB Level has not been found");
+    }
 }
 
-fn is_empty(slice: &[u8]) -> bool {
-    slice.iter().all(|&x| x == 0)
-}
-
-fn match_sgxtcbcomp(sgx_extensions: &SgxExtensions, sgxtcbcomponents: &[TcbComponent]) -> bool {
-    let extension_tcbcomponents = extension_to_tcbcomponents(&sgx_extensions.tcb);
+fn match_sgxtcbcomp(tcb: &SgxExtensionTcbLevel, sgxtcbcomponents: &[TcbComponent]) -> bool {
+    let extension_tcbcomponents = extension_to_tcbcomponents(tcb);
     // Compare all of the SGX TCB Comp SVNs retrieved from the SGX PCK Certificate (from 01 to 16) with the corresponding values of SVNs in sgxtcbcomponents array of TCB Level.
     // If all SGX TCB Comp SVNs in the certificate are greater or equal to the corresponding values in TCB Level, then return true.
     // Otherwise, return false.
@@ -524,6 +451,16 @@ fn match_sgxtcbcomp(sgx_extensions: &SgxExtensions, sgxtcbcomponents: &[TcbCompo
         .iter()
         .zip(sgxtcbcomponents.iter())
         .all(|(ext, tcb)| ext.svn >= tcb.svn)
+}
+
+fn match_tdxtcbcomp(tee_tcb_svn: &[u8; 16], tdxtcbcomponents: &[TcbComponent]) -> bool {
+    // Compare all of the TDX TCB Comp SVNs retrieved from the TDX Quote (from 01 to 16) with the corresponding values of SVNs in tdxtcbcomponents array of TCB Level.
+    // If all TDX TCB Comp SVNs in the quote are greater or equal to the corresponding values in TCB Level, then return true.
+    // Otherwise, return false.
+    tee_tcb_svn
+        .iter()
+        .zip(tdxtcbcomponents.iter())
+        .all(|(tee, tcb)| *tee >= tcb.svn)
 }
 
 fn extension_to_tcbcomponents(extension: &SgxExtensionTcbLevel) -> Vec<TcbComponent> {
@@ -610,4 +547,16 @@ fn extension_to_tcbcomponents(extension: &SgxExtensionTcbLevel) -> Vec<TcbCompon
     });
 
     tcbcomponents
+}
+
+/// Merge two vectors of advisory ids into one vector
+/// This function will remove any duplicates
+pub fn merge_advisory_ids(advisory_ids: Vec<String>, advisory_ids2: Vec<String>) -> Vec<String> {
+    let mut ids = advisory_ids
+        .into_iter()
+        .chain(advisory_ids2.into_iter())
+        .collect::<Vec<_>>();
+    ids.sort();
+    ids.dedup();
+    ids
 }

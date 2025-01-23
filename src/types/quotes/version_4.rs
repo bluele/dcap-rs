@@ -1,5 +1,10 @@
+use anyhow::bail;
+
 use super::{body::*, CertData, QuoteHeader};
-use crate::constants::{ENCLAVE_REPORT_LEN, SGX_TEE_TYPE, TD10_REPORT_LEN, TDX_TEE_TYPE};
+use crate::{
+    constants::{ENCLAVE_REPORT_LEN, SGX_TEE_TYPE, TD10_REPORT_LEN, TDX_TEE_TYPE},
+    Result,
+};
 
 #[derive(Clone, Debug)]
 pub struct QuoteV4 {
@@ -14,7 +19,7 @@ pub struct QuoteV4 {
 }
 
 impl QuoteV4 {
-    pub fn from_bytes(raw_bytes: &[u8]) -> Self {
+    pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         let header = QuoteHeader::from_bytes(&raw_bytes[0..48]);
         let quote_body;
         let mut offset: usize = 48;
@@ -22,15 +27,15 @@ impl QuoteV4 {
             SGX_TEE_TYPE => {
                 offset += ENCLAVE_REPORT_LEN;
                 quote_body =
-                    QuoteBody::SGXQuoteBody(EnclaveReport::from_bytes(&raw_bytes[48..offset]));
+                    QuoteBody::SGXQuoteBody(EnclaveReport::from_bytes(&raw_bytes[48..offset])?);
             }
             TDX_TEE_TYPE => {
                 offset += TD10_REPORT_LEN;
                 quote_body =
-                    QuoteBody::TD10QuoteBody(TD10ReportBody::from_bytes(&raw_bytes[48..offset]));
+                    QuoteBody::TD10QuoteBody(TD10ReportBody::from_bytes(&raw_bytes[48..offset])?);
             }
             _ => {
-                panic!("Unknown TEE type")
+                bail!("Unknown TEE type")
             }
         }
         let signature_len = u32::from_le_bytes([
@@ -43,12 +48,12 @@ impl QuoteV4 {
         let signature_slice = &raw_bytes[offset..offset + signature_len as usize];
         let signature = QuoteSignatureDataV4::from_bytes(signature_slice);
 
-        QuoteV4 {
+        Ok(QuoteV4 {
             header,
             quote_body,
             signature_len,
             signature,
-        }
+        })
     }
 }
 

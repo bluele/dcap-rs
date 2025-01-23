@@ -280,7 +280,6 @@ pub enum TcbInfo {
 //                 body without whitespaces using TCB Signing Key
 //                 i.e:
 //                 {"version":2,"issueDate":"2019-07-30T12:00:00Z","nextUpdate":"2019-08-30T12:00:00Z",...}
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TcbInfoV3 {

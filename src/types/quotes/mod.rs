@@ -1,3 +1,5 @@
+use crate::Result;
+
 use super::cert::Certificates;
 
 pub mod body;
@@ -123,17 +125,18 @@ impl CertData {
         }
     }
 
-    pub fn get_cert_data(&self) -> CertDataType {
-        match self.cert_data_type {
+    pub fn get_cert_data(&self) -> Result<CertDataType> {
+        let t = match self.cert_data_type {
             1 => CertDataType::Type1(self.cert_data.clone()),
             2 => CertDataType::Type2(self.cert_data.clone()),
             3 => CertDataType::Type3(self.cert_data.clone()),
             4 => CertDataType::Type4(self.cert_data.clone()),
-            5 => CertDataType::CertChain(Certificates::from_pem(&self.cert_data)),
-            6 => CertDataType::QeReportCertData(QeReportCertData::from_bytes(&self.cert_data)),
+            5 => CertDataType::CertChain(Certificates::from_pem(&self.cert_data)?),
+            6 => CertDataType::QeReportCertData(QeReportCertData::from_bytes(&self.cert_data)?),
             7 => CertDataType::Type7(self.cert_data.clone()),
             _ => CertDataType::Unused,
-        }
+        };
+        Ok(t)
     }
 }
 
@@ -157,9 +160,9 @@ pub struct QeReportCertData {
 }
 
 impl QeReportCertData {
-    pub fn from_bytes(raw_bytes: &[u8]) -> Self {
+    pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         // 384 bytes for qe_report
-        let qe_report = EnclaveReport::from_bytes(&raw_bytes[0..384]);
+        let qe_report = EnclaveReport::from_bytes(&raw_bytes[0..384])?;
         // 64 bytes for qe_report_signature
         let mut qe_report_signature = [0; 64];
         qe_report_signature.copy_from_slice(&raw_bytes[384..448]);
@@ -171,11 +174,11 @@ impl QeReportCertData {
         let qe_cert_data_start = 448 + qe_auth_data_size;
         let qe_cert_data = CertData::from_bytes(&raw_bytes[qe_cert_data_start..]);
 
-        QeReportCertData {
+        Ok(QeReportCertData {
             qe_report,
             qe_report_signature,
             qe_auth_data,
             qe_cert_data,
-        }
+        })
     }
 }
