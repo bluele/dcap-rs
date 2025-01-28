@@ -4,6 +4,7 @@ pub mod utils;
 
 use x509_parser::certificate::X509Certificate;
 
+pub use anyhow::Error;
 type Result<T> = core::result::Result<T, anyhow::Error>;
 
 #[cfg(test)]
